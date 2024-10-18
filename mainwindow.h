@@ -1,6 +1,7 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QMessageBox>
 #include <QMainWindow>
 #include <QThread>
 #include <QFile>
@@ -21,9 +22,16 @@ public:
     ~MainWindow();
 
 private slots:
-    void updateStatusBar(QString s);
     void updateAmbTemp(float f);
     void updateSetTemp(float f);
+    void updateStoveState(quint8 u, QString s);
+    void updatePower(quint8 set, quint8 flame);
+    void handleStatteBtn();
+    void handleStateForceBtn();
+    void handlePowerMinBtn();
+    void handlePowerPlusBtn();
+    void handleSetPointMinBtn();
+    void handleSetPointPlusBtn();
 private:
     Ui::MainWindow *ui;
     SerialProto *m_serProto;

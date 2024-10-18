@@ -12,6 +12,7 @@
 #include <QtSerialPort/qserialport.h>
 #include <QtSerialPort/qserialportinfo.h>
 
+
 #define requestsMapSize         (sizeof(requestsMap)/sizeof(requestsMap[0]))
 /* Stove Definitions */
 #define readCmd                 0x00
@@ -63,14 +64,6 @@ class SerialProto : public QObject
     //Q_PROPERTY(QString serPort                             WRITE setSerPort)
 
 public:
-    static SerialProto *getInstance();
-    //static QObject* createSingletonInstance(QQmlEngine *engine,  QJSEngine *scriptEngine);
-    //QList<serialPortStruct *> serialPortStructs();
-    void setSerPort(const QString &serPortName);
-    Q_INVOKABLE void openSerPort();    
-    Q_INVOKABLE void closeSerPort();
-    Q_INVOKABLE void startSerLoop();
-    Q_INVOKABLE void stopSerLoop();
 
     enum StoveState {
         Off = 0,
@@ -89,16 +82,39 @@ public:
     const QStringList m_stoveStateStr = {
         "Off",
         "Starting",
-        "PelletLoading",
+        "Pellet Loading",
         "Ignition",
         "Working",
-        "BrazierCleaning",
-        "FinalCleaning",
+        "Brazier Cleaning",
+        "Final Cleaning",
         "Standby",
-        "PelletMissing",
-        "IgnitionFailure",
+        "Pellet Missing",
+        "Ignition Failure",
         "Alarm"
     };
+
+    enum RequestsIndex
+    {
+        ambTempIndex,
+        cochleaTurnsIndex,
+        stoveStateIndex,
+        flamePowerIndex,
+        smokeFanSpeedIndex,
+        smokeTempIndex,
+        secondsCurrentIndex,
+        dayOfWeekIndex,
+        hoursCurrentIndex,
+        minutesCurrentIndex,
+        dayOfMonthCurrentIndex,
+        monthCurrentIndex,
+        yearCurrentIndex,
+        tempSetIndex,
+        powerSetIndex,
+        chronoEnableIndex,
+        chrono1OnIndex,
+        chrono1OffIndex
+    };
+    Q_ENUM(RequestsIndex)
 
     const struct {
         uint8_t page;
@@ -128,10 +144,24 @@ public:
         /* 16 */eepromBank, chrono1OnAddr,          "Crono 1 ON",           0,  10,
         /* 17 */eepromBank, chrono1OffAddr,         "Crono 1 OFF",          0,  10,
 
-
         /* LAST */0x00,     0x00,               "",                     0,  0,
     };
 
+    static SerialProto *getInstance();
+    //static QObject* createSingletonInstance(QQmlEngine *engine,  QJSEngine *scriptEngine);
+    //QList<serialPortStruct *> serialPortStructs();
+    void setSerPort(const QString &serPortName);
+    void openSerPort();
+    void closeSerPort();
+    void startSerLoop();
+    void stopSerLoop();
+    void writeStoveStateOn();
+    void writeStoveStateOff();
+    void writeStoveStateOffForce();
+    void writeStoveDecPower();
+    void writeStoveIncPower();
+    void writeStoveDecSetPoint();
+    void writeStoveIncSetPoint();
 private:
     static SerialProto *instance;
     explicit SerialProto(QObject *parent = nullptr);
@@ -140,7 +170,7 @@ private:
     QString m_selSerial;
     QSerialPort m_serial;
     QTimer m_loopTimer;
-    quint8 m_state, m_previousState;
+    quint8 m_state, m_previousState, m_nextState;
 
     quint8 m_stoveState, m_smokeTemp, m_flamePower, m_setPower, m_smokeFanSpeed;
     quint16 m_ambTempDC, m_setTempDC;
@@ -150,9 +180,8 @@ private:
         m_stoveHour, m_stoveMinutes, m_stoveSeconds;
 
     void readStoveInfo(quint8, quint8);
+    void writeStoveCmd(quint8 page, quint8 address, quint8 value);
     void sendData(QByteArray data);
-
-
 signals:
     void serialPortStructsChanged();
     void serialOpened();

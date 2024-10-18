@@ -49,8 +49,7 @@ int main(int argc, char *argv[])
 
     SerialProto *s = SerialProto::getInstance();
 
-    QFontDatabase::addApplicationFont(":/fonts/HIGHSPEED.TTF");
-    QFontDatabase::addApplicationFont(":/fonts/advanced_dot_digital-7.ttf");
+    QFontDatabase::addApplicationFont(":/fonts/AdvancedDotDigital7ls.ttf");
     ret = a.exec();
 
     qInfo() << "End Application";

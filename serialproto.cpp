@@ -7,7 +7,7 @@ SerialProto::SerialProto(QObject *parent)
     : QObject{parent}
 {
     m_selSerial = "";
-    m_state = 0;
+    m_state = m_previousState = m_nextState = 0;
     m_stoveState = m_smokeTemp = m_flamePower = m_setPower = m_smokeFanSpeed = 0;
     m_ambTempDC = m_setTempDC = 0;
     m_txMessages = m_rxMessages = m_rxErrors = 0;
@@ -31,8 +31,6 @@ SerialProto::SerialProto(QObject *parent)
 #endif
     connect(&m_serial, &QSerialPort::readyRead, this, &SerialProto::checkStoveReply);
     connect(&m_serial, &QSerialPort::bytesWritten, this, &SerialProto::bytesWritten);
-
-    //connect(&m_loopTimer, SIGNAL(timeout()), this, SLOT(getStoveInfos()));
     connect(&m_loopTimer, SIGNAL(timeout()), this, SLOT(getStoveInfos()));
 }
 
@@ -120,12 +118,15 @@ void SerialProto::sendData(QByteArray data)
         m_serial.write(data);
         m_serial.waitForBytesWritten(50);
         m_txMessages++;
+    } else {
+        for(int i=0; i<data.length(); i++)
+            qDebug() << "sendData: " << QString("%1").arg((quint8)data.at(i) , 0, 16);
     }
 }
 
 void SerialProto::startSerLoop()
 {
-    m_loopTimer.start(500);
+    m_loopTimer.start(200);
     m_txMessages = m_rxMessages = 0;
     emit loopStarted();
 }
@@ -145,13 +146,26 @@ void SerialProto::checkStoveReply()
 
     quint8 dtLen = stoveRxData.length();
 
+    for(int i=0; i<stoveRxData.length(); i++)
+        qDebug() << "recvData: " << QString("%1").arg((quint8)stoveRxData.at(i) , 0, 16);
+
+    if(dtLen == 6)
+    {
+        //Risposta a scrittura
+        //Rimuovo i messavvi inviati ed in echo
+        stoveRxData.remove(0,4);
+        stoveRxData[0] = (quint8)(stoveRxData[0] - writeCmd); //Tolgo 0x80
+        dtLen = 2;
+        //riavvio poll lettura info
+        m_loopTimer.start(1000);
+        m_state = 0;
+    }
     if(dtLen == 4)
     {
         //Rimuovo i messavvi inviati ed in echo
         stoveRxData.remove(0,2);
         dtLen = 2;
     }
-
     if(dtLen==0)
     {
         return;
@@ -188,6 +202,7 @@ void SerialProto::checkStoveReply()
             case stoveStateAddr:
                 m_stoveState = val;
                 qDebug() << "Resp: stoveStateAddr: " << m_stoveState;
+                emit updateStoveState(m_stoveState, m_stoveStateStr.at(m_stoveState));
                 break;
 
             case flamePowerAddr:
@@ -245,9 +260,12 @@ void SerialProto::checkStoveReply()
                 break;
             case powerSetAddr:
                 m_setPower = val;
+                qDebug() << "Resp: powerSetAddr: " << m_setPower;
+                emit updatePower(m_setPower, m_flamePower);
                 break;
 
             default:
+                qWarning() << "Unknow message";
                 qDebug() << QString("Resp: Chk: %1 - val: %2 - param: %3").arg(checksum, 0, 16)
                                 .arg(val, 0, 16)
                                 .arg(param, 0, 16);
@@ -266,14 +284,20 @@ void SerialProto::getStoveInfos()
     if(0==m_state)
     {
         m_loopTimer.stop();
-        m_loopTimer.start(500);
+        m_loopTimer.start(200);
     }
 
+    m_nextState       = m_previousState+1;
     m_previousState   = m_state;
     /*Ultimo address nella mappa mi serve per attendere arrivo ultimi dati prima di emit*/
     if(m_state < requestsMapSize)
         readStoveInfo( requestsMap[m_state].page,  requestsMap[m_state].address );
-    m_state++;
+
+    /*Un giro si e uno no controllo lo stato */
+    if(m_state == stoveStateIndex)
+        m_state = m_nextState;
+    else
+        m_state = stoveStateIndex;
 
     if(m_state >= requestsMapSize)
     {
@@ -300,4 +324,77 @@ void SerialProto::readStoveInfo(quint8 page, quint8 address)
     data.append((quint8)readCmd + (quint8)page);
     data.append((quint8)address);
     sendData(data);
+}
+
+void SerialProto::writeStoveCmd(quint8 page, quint8 address, quint8 value)
+{
+    m_loopTimer.stop();
+    QThread::msleep(150);//Aspetto eventuali messaggi incoda.
+    QByteArray data;
+    data.clear();
+    data.append((quint8)writeCmd + (quint8)page);
+    data.append((quint8)address);
+    data.append((quint8)value);
+    data.append((quint8)(writeCmd+page+address+value));
+    sendData(data);
+}
+
+void SerialProto::writeStoveStateOn()
+{
+    m_previousState = stoveStateIndex;
+    writeStoveCmd(requestsMap[stoveStateIndex].page,
+                  requestsMap[stoveStateIndex].address,
+                  StoveState::Starting  );
+}
+
+void SerialProto::writeStoveStateOff()
+{
+    m_previousState = stoveStateIndex;
+    writeStoveCmd(requestsMap[stoveStateIndex].page,
+                  requestsMap[stoveStateIndex].address,
+                  StoveState::FinalCleaning  );
+}
+
+void SerialProto::writeStoveStateOffForce()
+{
+    m_previousState = stoveStateIndex;
+    writeStoveCmd(requestsMap[stoveStateIndex].page,
+                  requestsMap[stoveStateIndex].address,
+                  StoveState::Off  );
+}
+
+void SerialProto::writeStoveDecPower()
+{
+    if(m_setPower<=1)
+        return;
+    m_previousState = powerSetIndex;
+    writeStoveCmd(requestsMap[powerSetIndex].page,
+                  requestsMap[powerSetIndex].address,
+                  m_setPower-1  );
+}
+
+void SerialProto::writeStoveIncPower()
+{
+    if(m_setPower>=5)
+        return;
+    m_previousState = powerSetIndex;
+    writeStoveCmd(requestsMap[powerSetIndex].page,
+                  requestsMap[powerSetIndex].address,
+                  m_setPower+1  );
+}
+
+void SerialProto::writeStoveDecSetPoint()
+{
+    m_previousState = tempSetIndex;
+    writeStoveCmd(requestsMap[tempSetIndex].page,
+                  requestsMap[tempSetIndex].address,
+                  ((m_setTemp*2)-1)  );
+}
+
+void SerialProto::writeStoveIncSetPoint()
+{
+    m_previousState = tempSetIndex;
+    writeStoveCmd(requestsMap[tempSetIndex].page,
+                  requestsMap[tempSetIndex].address,
+                  ((m_setTemp*2)+1)  );
 }

@@ -1,7 +1,7 @@
 <RCC>
     <qresource prefix="/">
         <file>qss/default.qss</file>
-        <file>fonts/triple_dot_digital-7.ttf</file>
-        <file>fonts/advanced_dot_digital-7.ttf</file>
+        <file>fonts/AdvancedDotDigital7ls.ttf</file>
+        <file>icons/power.svg</file>
     </qresource>
 </RCC>

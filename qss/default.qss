@@ -8,11 +8,16 @@ QFrame#frameDelay                           { background: transparent;  border: 
 */
 QFrame#ambTempFrame                         { border: 0px solid #000000; }
 QFrame#setTempFrame                         { border: 0px solid #000000; }
+QFrame#framePower                           { border: 0px solid #000000; }
+QFrame#onOffFrame                           { border: 0px solid #000000; }
+QFrame#frameSetPoint                        { border: 0px solid #000000; }
+
+
 /* QFormLayout */
 QFormLayout                                 { background: transparent;  border: 0px solid #000000; }
 
 /* QPushButton */
-QPushButton                                 { background: #AD1625;  border:none; border-radius: 2px; color: white; font: 10pt; font-weight: bold; }
+QPushButton                                 { background: red;  border:none; border-radius: 2px; color: white; font: 25pt; font-weight: bold; }
 QPushButton:pressed                         { background: #6E0A1E;  border:none;}
 QPushButton:checked                         { background: #3E0705;  border:none;}
 QPushButton:disabled                        { background: #666666;  border:none;}
@@ -21,11 +26,15 @@ QLabel                                      { color: white;   font: 8pt;   font-
 QLabel#ambTemp                              { color: white;   font: 50pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
 QLabel#ambTempDegSym                        { color: white;   font: 50pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
 QLabel#ambTempCSym                          { color: white;   font: 50pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
-
 QLabel#setTemp                              { color: lightgray;   font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
 QLabel#setTempDegSym                        { color: lightgray;   font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
 QLabel#setTempCSym                          { color: lightgray;   font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+QLabel#state                                { color: red;         font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
 
+QLabel#powerLab                             { color: red;         font: 13pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+QLabel#flameLab                             { color: red;         font: 13pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+QLabel#setPower                             { color: red;         font: 15pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+QLabel#setPowerPerc                         { color: red;         font: 15pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
 
 
 /* QProgressBar */
