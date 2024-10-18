@@ -189,7 +189,7 @@ signals:
     void serialError(QString);
     void loopStarted();
     void loopStopped();
-    void updateStats(quint32 txMessages, quint32 rxMessages);
+    void updateStats(quint32 txMessages, quint32 rxMessages, quint32 rxErrors);
     void updateAmbTemp(float ambTemp);
     void updateSetTemp(float setTemp);
     void updateStoveState(quint8 stoveState, QString stoveStateStr);

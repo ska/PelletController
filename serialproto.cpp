@@ -146,8 +146,8 @@ void SerialProto::checkStoveReply()
 
     quint8 dtLen = stoveRxData.length();
 
-    for(int i=0; i<stoveRxData.length(); i++)
-        qDebug() << "recvData: " << QString("%1").arg((quint8)stoveRxData.at(i) , 0, 16);
+    //for(int i=0; i<stoveRxData.length(); i++)
+    //    qDebug() << "recvData: " << QString("%1").arg((quint8)stoveRxData.at(i) , 0, 16);
 
     if(dtLen == 6)
     {
@@ -277,6 +277,7 @@ void SerialProto::checkStoveReply()
         qWarning() << "Received: " << dtLen << "bytes";
         m_rxErrors++;
     }
+    emit updateStats(m_txMessages, m_rxMessages, m_rxErrors);
 }
 
 void SerialProto::getStoveInfos()

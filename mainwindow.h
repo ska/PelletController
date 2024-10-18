@@ -26,6 +26,8 @@ private slots:
     void updateSetTemp(float f);
     void updateStoveState(quint8 u, QString s);
     void updatePower(quint8 set, quint8 flame);
+    void updateStoveDateTime(QDateTime dt);
+    void updateStats(quint32 txMessages, quint32 rxMessages, quint32 rxErrors);
     void handleStatteBtn();
     void handleStateForceBtn();
     void handlePowerMinBtn();

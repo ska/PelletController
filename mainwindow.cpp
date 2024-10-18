@@ -32,10 +32,13 @@ MainWindow::MainWindow(QWidget *parent)
 
 
     m_serProto = SerialProto::getInstance();
-    connect(m_serProto, SIGNAL(updateAmbTemp(float)),               this, SLOT(updateAmbTemp(float)));
-    connect(m_serProto, SIGNAL(updateSetTemp(float)),               this, SLOT(updateSetTemp(float)));
-    connect(m_serProto, SIGNAL(updateStoveState(quint8,QString)),   this, SLOT(updateStoveState(quint8,QString)));
-    connect(m_serProto, SIGNAL(updatePower(quint8,quint8)),         this, SLOT(updatePower(quint8,quint8)));
+    connect(m_serProto, SIGNAL(updateAmbTemp(float)),                this, SLOT(updateAmbTemp(float)));
+    connect(m_serProto, SIGNAL(updateSetTemp(float)),                this, SLOT(updateSetTemp(float)));
+    connect(m_serProto, SIGNAL(updateStoveState(quint8,QString)),    this, SLOT(updateStoveState(quint8,QString)));
+    connect(m_serProto, SIGNAL(updatePower(quint8,quint8)),          this, SLOT(updatePower(quint8,quint8)));
+    connect(m_serProto, SIGNAL(updateStoveDateTime(QDateTime)),      this, SLOT(updateStoveDateTime(QDateTime)));
+    connect(m_serProto, SIGNAL(updateStats(quint32,quint32,quint32)),this, SLOT(updateStats(quint32,quint32,quint32)));
+
 
     connect(ui->stateBtn,           SIGNAL(released()),              this, SLOT(handleStatteBtn()));
     connect(ui->stateOffForceBtn,   SIGNAL(released()),              this, SLOT(handleStateForceBtn()));
@@ -47,7 +50,6 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_serProto->openSerPort();
     m_serProto->startSerLoop();
-
 }
 
 MainWindow::~MainWindow()
@@ -111,6 +113,22 @@ void MainWindow::updatePower(quint8 set, quint8 flame)
 {
     ui->setPower->setText(QString::number(set));
     ui->setPowerPerc->setText(QString("%1 %").arg(QString::number(flame)));
+}
+
+void MainWindow::updateStoveDateTime(QDateTime dt)
+{
+    ui->datetime->setText( QString("%1 - %2")
+                              .arg(dt.toString("dd/MM/yyyy"))
+                              .arg(dt.toString("hh:mm"))
+                          );
+}
+
+void MainWindow::updateStats(quint32 txMessages, quint32 rxMessages, quint32 rxErrors)
+{
+    ui->serialStats->setText(QString("Tx: %1 Rx: %2 Err: %3")
+                                 .arg(txMessages)
+                                 .arg(rxMessages)
+                                 .arg(rxErrors));
 }
 
 void MainWindow::handleStatteBtn()
