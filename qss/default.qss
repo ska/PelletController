@@ -1,0 +1,55 @@
+/* QMainWindow */
+QMainWindow                                 { background: #111111; /*border-image: url(:/images/redcarbon1920.jpg);*/}
+/* QFrame */
+/*
+QFrame#frame                                { background: #333333;      border: 0px solid #000000; }
+QFrame#frameCbIn                            { background: transparent;  border: 0px solid #000000; }
+QFrame#frameDelay                           { background: transparent;  border: 0px solid #000000; }
+*/
+QFrame#ambTempFrame                         { border: 0px solid #000000; }
+QFrame#setTempFrame                         { border: 0px solid #000000; }
+/* QFormLayout */
+QFormLayout                                 { background: transparent;  border: 0px solid #000000; }
+
+/* QPushButton */
+QPushButton                                 { background: #AD1625;  border:none; border-radius: 2px; color: white; font: 10pt; font-weight: bold; }
+QPushButton:pressed                         { background: #6E0A1E;  border:none;}
+QPushButton:checked                         { background: #3E0705;  border:none;}
+QPushButton:disabled                        { background: #666666;  border:none;}
+/* QLabel */
+QLabel                                      { color: white;   font: 8pt;   font-weight: bold;}
+QLabel#ambTemp                              { color: white;   font: 50pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+QLabel#ambTempDegSym                        { color: white;   font: 50pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+QLabel#ambTempCSym                          { color: white;   font: 50pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+
+QLabel#setTemp                              { color: lightgray;   font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+QLabel#setTempDegSym                        { color: lightgray;   font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+QLabel#setTempCSym                          { color: lightgray;   font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
+
+
+
+/* QProgressBar */
+QProgressBar                                { background: #6E0A1E; border:none; border-radius: 2px; }
+QProgressBar::chunk                         { background: #AD1625; border:none; border-radius: 2px; }
+/* QMessageBox */
+QMessageBox                                 { background-color: #333333; border: 2px solid #000000; border-radius: 2px;}
+QMessageBox QLabel                          { min-width: 400px; min-height: 180px; font-size:13pt;  background: #333333; color: #aaa; }
+QMessageBox QPushButton                     { background: #AD1625; border:none; border-radius: 2px; min-width: 100px; min-height: 60px; }
+QMessageBox QPushButton:pressed             { background: #6E0A1E; border:none;}
+/* QTabWidget QTabBar */
+QTabWidget::pane                            { background: #333333; border: 2px solid #000000;}
+QTabWidget QTabBar::tab                     { background: #333333; color: white; border: 1px solid #000000;  padding: 10px;}
+QTabWidget QTabBar::tab:selected            { background: #6E0A1E; border: 2px solid #000000;}
+/* QCheckBox */
+QCheckBox                                   { color: white; background: transparent; }
+QCheckBox::indicator:disabled               { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
+                                                                stop:0 rgba(255, 0, 0, 255), stop:1 rgba(63, 0, 0, 255)); }
+
+QCheckBox::indicator:checked:disabled       { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
+                                                                stop:0 rgba(0, 255, 0, 255), stop:1 rgba(0, 64, 0, 255)); }
+
+QCheckBox::indicator                        { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
+                                                                stop:0 rgba(127, 127, 127, 255), stop:1 rgba(64, 64, 64, 255)); }
+QCheckBox#extendedID                        { color: white;  }
+QCheckBox::indicator#extendedID             { border: 3px solid #6E0A1E; background: none;}
+QCheckBox::indicator:checked#extendedID     { border: 8px solid #AD1625; background: none;}
