@@ -45,12 +45,14 @@ int main(int argc, char *argv[])
     w.showMaximized();
 #endif
 
-
-
     SerialProto *s = SerialProto::getInstance();
+
+
 
     QFontDatabase::addApplicationFont(":/fonts/AdvancedDotDigital7ls.ttf");
     ret = a.exec();
+
+
 
     qInfo() << "End Application";
     s->closeSerPort();

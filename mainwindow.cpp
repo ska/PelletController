@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
 
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -39,7 +40,6 @@ MainWindow::MainWindow(QWidget *parent)
     connect(m_serProto, SIGNAL(updateStoveDateTime(QDateTime)),      this, SLOT(updateStoveDateTime(QDateTime)));
     connect(m_serProto, SIGNAL(updateStats(quint32,quint32,quint32)),this, SLOT(updateStats(quint32,quint32,quint32)));
 
-
     connect(ui->stateBtn,           SIGNAL(released()),              this, SLOT(handleStatteBtn()));
     connect(ui->stateOffForceBtn,   SIGNAL(released()),              this, SLOT(handleStateForceBtn()));
     connect(ui->powerMinBtn,        SIGNAL(released()),              this, SLOT(handlePowerMinBtn()));
@@ -71,7 +71,6 @@ void MainWindow::updateStoveState(quint8 u, QString s)
 {
     ui->state->setText(s);
 
-
     switch (u) {
     case SerialProto::StoveState::Off:
         ui->stateBtn->setText("On");
@@ -85,28 +84,15 @@ void MainWindow::updateStoveState(quint8 u, QString s)
     case SerialProto::StoveState::PelletMissing:
     case SerialProto::StoveState::IgnitionFailure:
     case SerialProto::StoveState::Alarm:
-        ui->stateBtn->setText("Off");
+        ui->stateBtn->setText("Reset");
         ui->stateBtn->setEnabled(true);
         break;
 
-    /*
-    case     Starting:
-    case     PelletLoading:
-    case     Ignition:
-    case     BrazierCleaning:
-    case     FinalCleaning:
-    case     Standby:
-    case     PelletMissing:
-    case     IgnitionFailure:
-    case     Alarm:
-        break;
-    */
     default:
         ui->stateBtn->setEnabled(false);
         ui->stateBtn->setText("Off");
         break;
     }
-
 }
 
 void MainWindow::updatePower(quint8 set, quint8 flame)
