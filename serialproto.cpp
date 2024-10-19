@@ -108,7 +108,8 @@ void SerialProto::closeSerPort()
 
 void SerialProto::bytesWritten(qint64 bytes)
 {
-    qDebug() << "bytesWritten : " << bytes;
+    bytes = bytes;
+    //qDebug() << "bytesWritten : " << bytes;
 }
 
 void SerialProto::sendData(QByteArray data)
@@ -175,7 +176,7 @@ void SerialProto::checkStoveReply()
         quint8 val = stoveRxData[1];
         quint8 checksum = stoveRxData[0];
         quint8 param = checksum - val - requestsMap[m_previousState].page;
-
+        quint8 bank = requestsMap[m_previousState].page;
         if(param != requestsMap[m_previousState].address)
         {
             qWarning() << "Invalid response or checksum";
@@ -186,26 +187,27 @@ void SerialProto::checkStoveReply()
         }
 
         m_rxMessages++;
-        switch (param)
+
+        quint16 bank_param = (((quint16)bank << 8) | param);
+        switch (bank_param)
         {
-            case ambTempAddr:
+            case ramParam(ambTempAddr ):
                 m_ambTemp = (float)val / 2;
                 m_ambTempDC = (((quint16)val)*10)/2;
                 emit updateAmbTemp(m_ambTemp);
                 break;
 
-            case cochleaTurnsAddr:
+            case ramParam(cochleaTurnsAddr ):
                 m_tonCochlea = (float)val / 10;
                 qDebug() << "Resp: cochleaTurnsAddr: " << m_tonCochlea;
                 break;
 
-            case stoveStateAddr:
+            case ramParam(stoveStateAddr ):
                 m_stoveState = val;
-                qDebug() << "Resp: stoveStateAddr: " << m_stoveState;
                 emit updateStoveState(m_stoveState, m_stoveStateStr.at(m_stoveState));
                 break;
 
-            case flamePowerAddr:
+            case ramParam(flamePowerAddr ):
                 if (m_stoveState < 6)
                 {
                     //From 0-16 to 10-100%
@@ -219,49 +221,197 @@ void SerialProto::checkStoveReply()
                 qDebug() << "Resp: flamePowerAddr: " << m_flamePower;
                 break;
 
-            case smokeFanSpeedAddr:
+            case ramParam(smokeFanSpeedAddr ):
                 m_smokeFanSpeed = (val*10)+250;
                 qDebug() << "Resp: smokeFanSpeedAddr: " << m_smokeFanSpeed;
                 break;
 
-            case smokeTempAddr:
+            case ramParam(smokeTempAddr ):
                 //corretta
                 m_smokeTemp = val;
                 qDebug() << "Resp: smokeTempAddr: " << m_smokeTemp;
                 break;
 
-            case secondsCurrentAddr:
+            case ramParam(secondsCurrentAddr ):
                 m_stoveSeconds = val;
-                qDebug() << "Resp: secondsCurrentAddr: " << m_stoveSeconds;
                 break;
-            case dayOfWeekAddr:
+            case ramParam(dayOfWeekAddr ):
                 m_stoveDoW = val;
                 break;
-            case hoursCurrentAddr:
+            case ramParam(hoursCurrentAddr ):
                 m_stoveHour = val;
                 break;
-            case minutesCurrentAddr:
+            case ramParam(minutesCurrentAddr ):
                 m_stoveMinutes = val;
                 break;
-            case dayOfMonthCurrentAddr:
+            case ramParam(dayOfMonthCurrentAddr ):
                 m_stoveDay = val;
                 break;
-            case monthCurrentAddr:
+            case ramParam(monthCurrentAddr ):
                 m_stoveMonth = val;
                 break;
-            case yearCurrentAddr:
+            case ramParam(yearCurrentAddr ):
                 m_stoveYear = val;
                 break;
-            case tempSetAddr:
+            case eepromParam(tempSetAddr ):
                 m_setTemp = (float)val / 2;
                 m_setTempDC = (((quint16)val)*10)/2;
-                //qDebug() << Q_FUNC_INFO << "tempSetAddr: " << m_setTemp;
                 emit updateSetTemp(m_setTemp);
                 break;
-            case powerSetAddr:
+            case eepromParam(powerSetAddr ):
                 m_setPower = val;
                 qDebug() << "Resp: powerSetAddr: " << m_setPower;
                 emit updatePower(m_setPower, m_flamePower);
+                break;
+                /*********/
+            case eepromParam(chronoEnableAddr ):
+                m_chronoEnable = (bool)val;
+                qDebug() << "Resp: chronoEnableAddr: " << m_chronoEnable;
+                break;
+                /*********/
+
+            case eepromParam( chronoDay_EnableAddr ):
+                qDebug() << "Resp: chronoDay_EnableAddr: " << val;
+                break;
+            case eepromParam( chronoDay_1_OnAddr ):
+                qDebug() << "Resp: chronoDay_1_OnAddr: " << val;
+                break;
+            case eepromParam( chronoDay_1_OffAddr ):
+                qDebug() << "Resp: chronoDay_1_OffAddr: " << val;
+                break;
+            case eepromParam( chronoDay_2_OnAddr ):
+                qDebug() << "Resp: chronoDay_2_OnAddr: " << val;
+                break;
+            case eepromParam( chronoDay_2_OffAddr ):
+                qDebug() << "Resp: chronoDay_2_OffAddr: " << val;
+                break;
+
+
+            case eepromParam(chronoSet_EnableAddr ):
+                qDebug() << "Resp: chronoSet_EnableAddr: " << val;
+                break;
+            case eepromParam(chronoSet_1_OnAddr ):
+                qDebug() << "Resp: chronoSet_1_OnAddr: " << val;
+                break;
+            case eepromParam( chronoSet_1_OffAddr ):
+                qDebug() << "Resp: chronoSet_1_OffAddr: " << val;
+                break;
+            case eepromParam( chronoSet_1_LunEnabAddr ):
+                qDebug() << "Resp: chronoSet_1_LunEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_1_MarEnabAddr ):
+                qDebug() << "Resp: chronoSet_1_MarEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_1_MerEnabAddr ):
+                qDebug() << "Resp: chronoSet_1_MerEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_1_GioEnabAddr ):
+                qDebug() << "Resp: chronoSet_1_GioEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_1_VenEnabAddr ):
+                qDebug() << "Resp: chronoSet_1_VenEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_1_SabEnabAddr ):
+                qDebug() << "Resp: chronoSet_1_SabEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_1_DomEnabAddr ):
+                qDebug() << "Resp: chronoSet_1_DomEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_2_OnAddr ):
+                qDebug() << "Resp: chronoSet_2_OnAddr: " << val;
+                break;
+            case eepromParam( chronoSet_2_OffAddr ):
+                qDebug() << "Resp: chronoSet_2_OffAddr: " << val;
+                break;
+            case eepromParam( chronoSet_2_LunEnabAddr ):
+                qDebug() << "Resp: chronoSet_2_LunEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_2_MarEnabAddr ):
+                qDebug() << "Resp: chronoSet_2_MarEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_2_MerEnabAddr ):
+                qDebug() << "Resp: chronoSet_2_MerEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_2_GioEnabAddr ):
+                qDebug() << "Resp: chronoSet_2_GioEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_2_VenEnabAddr ):
+                qDebug() << "Resp: chronoSet_2_VenEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_2_SabEnabAddr ):
+                qDebug() << "Resp: chronoSet_2_SabEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_2_DomEnabAddr ):
+                qDebug() << "Resp: chronoSet_2_DomEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_3_OnAddr ):
+                qDebug() << "Resp: chronoSet_3_OnAddr: " << val;
+                break;
+            case eepromParam( chronoSet_3_OffAddr ):
+                qDebug() << "Resp: chronoSet_3_OffAddr: " << val;
+                break;
+            case eepromParam( chronoSet_3_LunEnabAddr ):
+                qDebug() << "Resp: chronoSet_3_LunEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_3_MarEnabAddr ):
+                qDebug() << "Resp: chronoSet_3_MarEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_3_MerEnabAddr ):
+                qDebug() << "Resp: chronoSet_3_MerEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_3_GioEnabAddr ):
+                qDebug() << "Resp: chronoSet_3_GioEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_3_VenEnabAddr ):
+                qDebug() << "Resp: chronoSet_3_VenEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_3_SabEnabAddr ):
+                qDebug() << "Resp: chronoSet_3_SabEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_3_DomEnabAddr ):
+                qDebug() << "Resp: chronoSet_3_DomEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_4_OnAddr ):
+                qDebug() << "Resp: chronoSet_4_OnAddr: " << val;
+                break;
+            case eepromParam( chronoSet_4_OffAddr ):
+                qDebug() << "Resp: chronoSet_4_OffAddr: " << val;
+                break;
+            case eepromParam( chronoSet_4_LunEnabAddr ):
+                qDebug() << "Resp: chronoSet_4_LunEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_4_MarEnabAddr ):
+                qDebug() << "Resp: chronoSet_4_MarEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_4_MerEnabAddr ):
+                qDebug() << "Resp: chronoSet_4_MerEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_4_GioEnabAddr ):
+                qDebug() << "Resp: chronoSet_4_GioEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_4_VenEnabAddr ):
+                qDebug() << "Resp: chronoSet_4_VenEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_4_SabEnabAddr ):
+                qDebug() << "Resp: chronoSet_4_SabEnabAddr: " << val;
+                break;
+            case eepromParam( chronoSet_4_DomEnabAddr ):
+                qDebug() << "Resp: chronoSet_4_DomEnabAddr: " << val;
+                break;
+            case eepromParam( chronoWkE_EnableAddr ):
+                qDebug() << "Resp: chronoWkE_EnableAddr: " << val;
+                break;
+            case eepromParam( chronoWkE_1_OnAddr ):
+                qDebug() << "Resp: chronoWkE_1_OnAddr: " << val;
+                break;
+            case eepromParam( chronoWkE_1_OffAddr ):
+                qDebug() << "Resp: chronoWkE_1_OffAddr: " << val;
+                break;
+            case eepromParam( chronoWkE_2_OnAddr ):
+                qDebug() << "Resp: chronoWkE_2_OnAddr: " << val;
+                break;
+            case eepromParam( chronoWkE_2_OffAddr ):
+                qDebug() << "Resp: chronoWkE_2_OffAddr: " << val;
                 break;
 
             default:

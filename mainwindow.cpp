@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
+#include "common.h"
 
 
 MainWindow::MainWindow(QWidget *parent)
@@ -14,6 +15,7 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     /* Init Gui */
+    ui->swVersion->setText(SW_NAME_VER);
     ui->ambTempCSym->setText("C");
     ui->ambTempDegSym->setText("°");
     ui->ambTemp->setText("xx.x");
@@ -127,6 +129,7 @@ void MainWindow::handleStatteBtn()
         msgBox.setText("Are you sure you want to turn OFF the stove?");
         QPushButton *actionButton = msgBox.addButton(tr("Turn OFF"), QMessageBox::ActionRole);
         QPushButton *abortButton =  msgBox.addButton(tr("Cancel"), QMessageBox::ActionRole);
+        abortButton = abortButton;
         msgBox.exec();
         if (msgBox.clickedButton() == actionButton)
         {
@@ -139,6 +142,7 @@ void MainWindow::handleStatteBtn()
         msgBox.setText("Are you sure you want to turn ON the stove?");
         QPushButton *actionButton = msgBox.addButton(tr("Turn ON"), QMessageBox::ActionRole);
         QPushButton *abortButton = msgBox.addButton(tr("Cancel"), QMessageBox::ActionRole);
+        abortButton = abortButton;
         msgBox.exec();
         if (msgBox.clickedButton() == actionButton)
         {
@@ -146,6 +150,7 @@ void MainWindow::handleStatteBtn()
             m_serProto->writeStoveStateOn();
         }
     }
+
 }
 
 void MainWindow::handleStateForceBtn()

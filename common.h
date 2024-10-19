@@ -17,7 +17,7 @@
 
 #define SW_NAME     "Pellet Controller"
 #define VER_MAJ     "1"
-#define VER_MIN     "0"
+#define VER_MIN     "1"
 
 #ifdef QT_DEBUG
 #define VER_FIX     GIT_REVISION
@@ -26,6 +26,8 @@
 #endif
 
 #define SW_VER      VER_MAJ "." VER_MIN "-" VER_FIX
+#define SW_NAME_VER      SW_NAME " - " SW_VER
+
 
 
 #define BUFFSIZE                (256*1024)

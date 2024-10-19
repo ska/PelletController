@@ -356,7 +356,7 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>300</width>
+      <width>250</width>
       <height>20</height>
      </rect>
     </property>
@@ -367,9 +367,9 @@
    <widget class="QLabel" name="serialStats">
     <property name="geometry">
      <rect>
-      <x>490</x>
+      <x>540</x>
       <y>10</y>
-      <width>300</width>
+      <width>250</width>
       <height>20</height>
      </rect>
     </property>
@@ -378,6 +378,22 @@
     </property>
     <property name="alignment">
      <set>Qt::AlignRight|Qt::AlignTrailing|Qt::AlignVCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="swVersion">
+    <property name="geometry">
+     <rect>
+      <x>275</x>
+      <y>10</y>
+      <width>250</width>
+      <height>20</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>TextLabel</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
     </property>
    </widget>
   </widget>
