@@ -267,9 +267,12 @@ void SerialProto::checkStoveReply()
             case eepromParam(chronoEnableAddr ):
                 m_chronoEnable = (bool)val;
                 qDebug() << "Resp: chronoEnableAddr: " << m_chronoEnable;
+                emit updateChronoEnable(m_chronoEnable);
                 break;
-                /*********/
 
+
+
+                /*********/
             case eepromParam( chronoDay_EnableAddr ):
                 qDebug() << "Resp: chronoDay_EnableAddr: " << val;
                 break;

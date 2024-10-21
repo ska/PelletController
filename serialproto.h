@@ -363,6 +363,7 @@ signals:
     void updateAmbTemp(quint16 ambTempDC, quint16 setTempDC);
     void updatePower(quint8 setPower, quint8 flamePower);
     void updateSmoke(quint8 smokeTemp, quint8 smokeFanSpeed);
+    void updateChronoEnable(bool chronoEnable);
 
     //, quint16 ambTempDC, quint8 fumesTemp, quint8 flamePower);
     void updateStoveDateTime(QDateTime stoveDateTime);

@@ -3,5 +3,7 @@
         <file>qss/default.qss</file>
         <file>fonts/AdvancedDotDigital7ls.ttf</file>
         <file>icons/power.svg</file>
+        <file>icons/wall-clock-drk.png</file>
+        <file>icons/wall-clock-v.png</file>
     </qresource>
 </RCC>
