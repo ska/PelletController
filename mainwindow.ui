@@ -319,14 +319,14 @@
    <widget class="QStackedWidget" name="stackedWidget">
     <property name="geometry">
      <rect>
-      <x>0</x>
+      <x>20</x>
       <y>50</y>
-      <width>801</width>
-      <height>301</height>
+      <width>761</width>
+      <height>300</height>
      </rect>
     </property>
     <property name="currentIndex">
-     <number>0</number>
+     <number>1</number>
     </property>
     <widget class="QWidget" name="mainPage">
      <widget class="QLabel" name="state">
@@ -420,7 +420,361 @@
       </property>
      </widget>
     </widget>
-    <widget class="QWidget" name="chronoPage"/>
+    <widget class="QWidget" name="chronoPage">
+     <widget class="QTabWidget" name="chronoTabWdg">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>70</y>
+        <width>721</width>
+        <height>201</height>
+       </rect>
+      </property>
+      <property name="tabPosition">
+       <enum>QTabWidget::North</enum>
+      </property>
+      <property name="tabShape">
+       <enum>QTabWidget::Rounded</enum>
+      </property>
+      <property name="currentIndex">
+       <number>1</number>
+      </property>
+      <property name="elideMode">
+       <enum>Qt::ElideNone</enum>
+      </property>
+      <widget class="QWidget" name="chronoWkETab">
+       <attribute name="title">
+        <string>chronoWkETab</string>
+       </attribute>
+       <widget class="QCheckBox" name="chronoWkEEnableCB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>30</y>
+          <width>211</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Chrono  WeekEnd Enable</string>
+        </property>
+       </widget>
+       <widget class="QTimeEdit" name="chronoWkEStart1TE">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>190</x>
+          <y>80</y>
+          <width>118</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <property name="displayFormat">
+         <string>hh:mm</string>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="chronoWkEStart1CB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>80</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Start 1</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+        <property name="tristate">
+         <bool>false</bool>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="chronoWkEStop1CB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>120</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Stop 1</string>
+        </property>
+       </widget>
+       <widget class="QTimeEdit" name="chronoWkEStop1TE">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>190</x>
+          <y>120</y>
+          <width>118</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <property name="displayFormat">
+         <string>hh:mm</string>
+        </property>
+       </widget>
+       <widget class="QTimeEdit" name="chronoWkEStop2TE">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>560</x>
+          <y>120</y>
+          <width>118</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <property name="displayFormat">
+         <string>hh:mm</string>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="chronoWkEStart2CB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>80</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Start 2</string>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="chronoWkEStop2CB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>120</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Stop 2</string>
+        </property>
+       </widget>
+       <widget class="QTimeEdit" name="chronoWkEStart2TE">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>560</x>
+          <y>80</y>
+          <width>118</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <property name="displayFormat">
+         <string>hh:mm</string>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="chronoDayTab">
+       <attribute name="title">
+        <string>chronoDayTab</string>
+       </attribute>
+       <widget class="QTimeEdit" name="chronoDayStop1TE">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>190</x>
+          <y>120</y>
+          <width>118</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <property name="displayFormat">
+         <string>hh:mm</string>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="chronoDayStop2CB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>120</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Stop 2</string>
+        </property>
+       </widget>
+       <widget class="QTimeEdit" name="chronoDayStart2TE">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>560</x>
+          <y>80</y>
+          <width>118</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <property name="displayFormat">
+         <string>hh:mm</string>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="chronoDayEnableCB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>30</y>
+          <width>211</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Chrono  Day Enable</string>
+        </property>
+       </widget>
+       <widget class="QTimeEdit" name="chronoDayStart1TE">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>190</x>
+          <y>80</y>
+          <width>118</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <property name="displayFormat">
+         <string>hh:mm</string>
+        </property>
+       </widget>
+       <widget class="QTimeEdit" name="chronoDayStop2TE">
+        <property name="enabled">
+         <bool>false</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>560</x>
+          <y>120</y>
+          <width>118</width>
+          <height>26</height>
+         </rect>
+        </property>
+        <property name="displayFormat">
+         <string>hh:mm</string>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="chronoDayStop1CB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>120</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Stop 1</string>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="chronoDayStart1CB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>50</x>
+          <y>80</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Start 1</string>
+        </property>
+        <property name="checked">
+         <bool>false</bool>
+        </property>
+        <property name="tristate">
+         <bool>false</bool>
+        </property>
+       </widget>
+       <widget class="QCheckBox" name="chronoDayStart2CB">
+        <property name="enabled">
+         <bool>true</bool>
+        </property>
+        <property name="geometry">
+         <rect>
+          <x>420</x>
+          <y>80</y>
+          <width>111</width>
+          <height>23</height>
+         </rect>
+        </property>
+        <property name="text">
+         <string>Start 2</string>
+        </property>
+       </widget>
+      </widget>
+      <widget class="QWidget" name="chronoSetTab">
+       <attribute name="title">
+        <string>chronoSetTab</string>
+       </attribute>
+      </widget>
+     </widget>
+     <widget class="QCheckBox" name="chronoEnableCB">
+      <property name="geometry">
+       <rect>
+        <x>20</x>
+        <y>30</y>
+        <width>211</width>
+        <height>23</height>
+       </rect>
+      </property>
+      <property name="text">
+       <string>Chrono Enable</string>
+      </property>
+      <property name="checked">
+       <bool>false</bool>
+      </property>
+     </widget>
+    </widget>
    </widget>
   </widget>
  </widget>

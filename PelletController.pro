@@ -43,9 +43,11 @@ equals(QT_ARCH, "arm") {
 
     INCLUDEPATH     += $$PWD/$$LIB_PATH/include/
     DEPENDPATH      += $$PWD/$$LIB_PATH/lib/
+    DEPENDPATH      += $$PWD/$$LIB_PATH/include
     LIBS            += -L$$PWD/$$LIB_PATH/lib/
 
     LIBS            += -lQt5SerialPort
+    LIBS            += -lwclickablelabelplugin
 
 
 }
@@ -64,9 +66,11 @@ equals(QT_ARCH, "x86_64") {
 
     INCLUDEPATH     += $$PWD/$$LIB_PATH/include/
     DEPENDPATH      += $$PWD/$$LIB_PATH/lib/
+    DEPENDPATH      += $$PWD/$$LIB_PATH/include
     LIBS            += -L$$PWD/$$LIB_PATH/lib/
 
     LIBS            += -lQt5SerialPort
+    LIBS            += -lwclickablelabelplugin
 }
 # Default rules for deployment.
 
@@ -75,3 +79,13 @@ equals(QT_ARCH, "x86_64") {
 target.path = $${DEPLOY_PATH}/
 !isEmpty(target.path): INSTALLS += target
 DESTDIR += bin_$$QT_ARCH
+
+##############################################################
+# Install SO files
+##############################################################
+QMAKE_POST_LINK += $$quote($(COPY_DIR) $$DEPENDPATH  $$DESTDIR/ ;)
+## Install SO Libs to remote target
+so_libs.path =$${DEPLOY_PATH}/lib
+so_libs.files += $${PWD}/$$LIB_PATH/lib/*.so*
+INSTALLS += so_libs
+

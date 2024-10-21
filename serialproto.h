@@ -12,6 +12,9 @@
 #include <QtSerialPort/qserialport.h>
 #include <QtSerialPort/qserialportinfo.h>
 
+#define SERIAL_MESSAGE_DELAY    (200)
+#define SERIAL_SESSION_DELAY    (SERIAL_MESSAGE_DELAY*10)
+
 #define ramParam(param)         (((quint16)ramBank << 8) | param)
 #define eepromParam(param)      (((quint16)eepromBank << 8) | param)
 #define requestsMapSize         ((sizeof(requestsMap)/sizeof(requestsMap[0]))-1) //Tolgo uno perchè all'interno della struttura ho una posizione "Fake"
@@ -162,6 +165,12 @@ public:
         /*********/
         chronoEnableIndex,
         /*********/
+        chronoWkE_EnableIndex,
+        chronoWkE_1_OnIndex,
+        chronoWkE_1_OffIndex,
+        chronoWkE_2_OnIndex,
+        chronoWkE_2_OffIndex,
+        /*********/
         chronoDay_EnableIndex,
         chronoDay_1_OnIndex,
         chronoDay_1_OffIndex,
@@ -209,12 +218,8 @@ public:
         chronoSet_4_VenEnabIndex,
         chronoSet_4_SabEnabIndex,
         chronoSet_4_DomEnabIndex,
-        /*********/
-        chronoWkE_EnableIndex,
-        chronoWkE_1_OnIndex,
-        chronoWkE_1_OffIndex,
-        chronoWkE_2_OnIndex,
-        chronoWkE_2_OffIndex,
+
+        LastIndex
     };
     Q_ENUM(RequestsIndex)
 
@@ -224,7 +229,7 @@ public:
         char    description[50];
         uint8_t offset;
         float scale;
-    } requestsMap[17] = {
+    } requestsMap[63] = {
         /*********/
         /* 00 */ramBank,    ambTempAddr,                "Temp. ambiente",                   0,  2.0,
         /* 01 */ramBank,    cochleaTurnsAddr,           "Ton di ON coclea",                 0,  0.1,
@@ -244,71 +249,59 @@ public:
         /* 14 */eepromBank, powerSetAddr,               "Potenza impostata",                0,  1,
         /*********/
         /* 15 */eepromBank, chronoEnableAddr,           "Crono abilitato",                  0,  1,
-        /* LAST */0x00,     0x00,                       "",                                 0,  0,
-    };
-
-    const struct {
-        uint8_t page;
-        uint8_t address;
-        char    description[50];
-        uint8_t offset;
-        float scale;
-    } requestsMapChrono[64] = {
-        /* 15 */eepromBank, chronoEnableAddr,           "Crono abilitato",                  0,  1,
         /*********/
-        /* 16 */eepromBank, chronoDay_EnableAddr,       "Crono Gior. abilitato",            0,  1,
-        /* 17 */eepromBank, chronoDay_1_OnAddr,         "Crono Gior. 1 ON Time",            0,  10,
-        /* 18 */eepromBank, chronoDay_1_OffAddr,        "Crono Gior. 1 ON Time",            0,  10,
-        /* 19 */eepromBank, chronoDay_2_OnAddr,         "Crono Gior. 2 OFF Time",           0,  10,
-        /* 20 */eepromBank, chronoDay_2_OffAddr,        "Crono Gior. 2 OFF Time",           0,  10,
+        /* 16 */eepromBank, chronoWkE_EnableAddr,       "Crono WeekEnd. abilitato",         0,  1,
+        /* 17 */eepromBank, chronoWkE_1_OnAddr,         "Crono WeekEnd. 1 ON Time",         0,  10,
+        /* 18 */eepromBank, chronoWkE_1_OffAddr,        "Crono WeekEnd. 1 ON Time",         0,  10,
+        /* 19 */eepromBank, chronoWkE_2_OnAddr,         "Crono WeekEnd. 2 OFF Time",        0,  10,
+        /* 20 */eepromBank, chronoWkE_2_OffAddr,        "Crono WeekEnd. 2 OFF Time",        0,  10,
         /*********/
-        /* 21 */eepromBank, chronoSet_EnableAddr,       "Crono Sett. abilitato",            0,  1,
+        /* 21 */eepromBank, chronoDay_EnableAddr,       "Crono Gior. abilitato",            0,  1,
+        /* 22 */eepromBank, chronoDay_1_OnAddr,         "Crono Gior. 1 ON Time",            0,  10,
+        /* 23 */eepromBank, chronoDay_1_OffAddr,        "Crono Gior. 1 ON Time",            0,  10,
+        /* 24 */eepromBank, chronoDay_2_OnAddr,         "Crono Gior. 2 OFF Time",           0,  10,
+        /* 25 */eepromBank, chronoDay_2_OffAddr,        "Crono Gior. 2 OFF Time",           0,  10,
         /*********/
-        /* 22 */eepromBank, chronoSet_1_OnAddr,         "Crono Sett. 1 ON Time",            0,  10,
-        /* 23 */eepromBank, chronoSet_1_OffAddr,        "Crono Sett. 1 OFF Time",           0,  10,
-        /* 24 */eepromBank, chronoSet_1_LunEnabAddr,    "Crono Sett. 1 Lun abilitato",      0,  1,
-        /* 25 */eepromBank, chronoSet_1_MarEnabAddr,    "Crono Sett. 1 Mar abilitato",      0,  1,
-        /* 26 */eepromBank, chronoSet_1_MerEnabAddr,    "Crono Sett. 1 Mer abilitato",      0,  1,
-        /* 27 */eepromBank, chronoSet_1_GioEnabAddr,    "Crono Sett. 1 Gio abilitato",      0,  1,
-        /* 28 */eepromBank, chronoSet_1_VenEnabAddr,    "Crono Sett. 1 Ven abilitato",      0,  1,
-        /* 29 */eepromBank, chronoSet_1_SabEnabAddr,    "Crono Sett. 1 Sab abilitato",      0,  1,
-        /* 30 */eepromBank, chronoSet_1_DomEnabAddr,    "Crono Sett. 1 Dom abilitato",      0,  1,
+        /* 26 */eepromBank, chronoSet_EnableAddr,       "Crono Sett. abilitato",            0,  1,
+        /* 27 */eepromBank, chronoSet_1_OnAddr,         "Crono Sett. 1 ON Time",            0,  10,
+        /* 28 */eepromBank, chronoSet_1_OffAddr,        "Crono Sett. 1 OFF Time",           0,  10,
+        /* 29 */eepromBank, chronoSet_1_LunEnabAddr,    "Crono Sett. 1 Lun abilitato",      0,  1,
+        /* 30 */eepromBank, chronoSet_1_MarEnabAddr,    "Crono Sett. 1 Mar abilitato",      0,  1,
+        /* 31 */eepromBank, chronoSet_1_MerEnabAddr,    "Crono Sett. 1 Mer abilitato",      0,  1,
+        /* 32 */eepromBank, chronoSet_1_GioEnabAddr,    "Crono Sett. 1 Gio abilitato",      0,  1,
+        /* 33 */eepromBank, chronoSet_1_VenEnabAddr,    "Crono Sett. 1 Ven abilitato",      0,  1,
+        /* 34 */eepromBank, chronoSet_1_SabEnabAddr,    "Crono Sett. 1 Sab abilitato",      0,  1,
+        /* 35 */eepromBank, chronoSet_1_DomEnabAddr,    "Crono Sett. 1 Dom abilitato",      0,  1,
         /*********/
-        /* 31 */eepromBank, chronoSet_2_OnAddr,         "Crono Sett. 2 ON Time",            0,  10,
-        /* 32 */eepromBank, chronoSet_2_OffAddr,        "Crono Sett. 2 OFF Time",           0,  10,
-        /* 33 */eepromBank, chronoSet_2_LunEnabAddr,    "Crono Sett. 2 Lun abilitato",      0,  1,
-        /* 34 */eepromBank, chronoSet_2_MarEnabAddr,    "Crono Sett. 2 Mar abilitato",      0,  1,
-        /* 35 */eepromBank, chronoSet_2_MerEnabAddr,    "Crono Sett. 2 Mer abilitato",      0,  1,
-        /* 36 */eepromBank, chronoSet_2_GioEnabAddr,    "Crono Sett. 2 Gio abilitato",      0,  1,
-        /* 37 */eepromBank, chronoSet_2_VenEnabAddr,    "Crono Sett. 2 Ven abilitato",      0,  1,
-        /* 38 */eepromBank, chronoSet_2_SabEnabAddr,    "Crono Sett. 2 Sab abilitato",      0,  1,
-        /* 39 */eepromBank, chronoSet_2_DomEnabAddr,    "Crono Sett. 2 Dom abilitato",      0,  1,
+        /* 36 */eepromBank, chronoSet_2_OnAddr,         "Crono Sett. 2 ON Time",            0,  10,
+        /* 37 */eepromBank, chronoSet_2_OffAddr,        "Crono Sett. 2 OFF Time",           0,  10,
+        /* 38 */eepromBank, chronoSet_2_LunEnabAddr,    "Crono Sett. 2 Lun abilitato",      0,  1,
+        /* 39 */eepromBank, chronoSet_2_MarEnabAddr,    "Crono Sett. 2 Mar abilitato",      0,  1,
+        /* 40 */eepromBank, chronoSet_2_MerEnabAddr,    "Crono Sett. 2 Mer abilitato",      0,  1,
+        /* 41 */eepromBank, chronoSet_2_GioEnabAddr,    "Crono Sett. 2 Gio abilitato",      0,  1,
+        /* 42 */eepromBank, chronoSet_2_VenEnabAddr,    "Crono Sett. 2 Ven abilitato",      0,  1,
+        /* 43 */eepromBank, chronoSet_2_SabEnabAddr,    "Crono Sett. 2 Sab abilitato",      0,  1,
+        /* 44 */eepromBank, chronoSet_2_DomEnabAddr,    "Crono Sett. 2 Dom abilitato",      0,  1,
         /*********/
-        /* 40 */eepromBank, chronoSet_3_OnAddr,         "Crono Sett. 3 ON Time",            0,  10,
-        /* 41 */eepromBank, chronoSet_3_OffAddr,        "Crono Sett. 3 OFF Time",           0,  10,
-        /* 42 */eepromBank, chronoSet_3_LunEnabAddr,    "Crono Sett. 3 Lun abilitato",      0,  1,
-        /* 43 */eepromBank, chronoSet_3_MarEnabAddr,    "Crono Sett. 3 Mar abilitato",      0,  1,
-        /* 44 */eepromBank, chronoSet_3_MerEnabAddr,    "Crono Sett. 3 Mer abilitato",      0,  1,
-        /* 45 */eepromBank, chronoSet_3_GioEnabAddr,    "Crono Sett. 3 Gio abilitato",      0,  1,
-        /* 46 */eepromBank, chronoSet_3_VenEnabAddr,    "Crono Sett. 3 Ven abilitato",      0,  1,
-        /* 47 */eepromBank, chronoSet_3_SabEnabAddr,    "Crono Sett. 3 Sab abilitato",      0,  1,
-        /* 48 */eepromBank, chronoSet_3_DomEnabAddr,    "Crono Sett. 3 Dom abilitato",      0,  1,
+        /* 45 */eepromBank, chronoSet_3_OnAddr,         "Crono Sett. 3 ON Time",            0,  10,
+        /* 46 */eepromBank, chronoSet_3_OffAddr,        "Crono Sett. 3 OFF Time",           0,  10,
+        /* 47 */eepromBank, chronoSet_3_LunEnabAddr,    "Crono Sett. 3 Lun abilitato",      0,  1,
+        /* 48 */eepromBank, chronoSet_3_MarEnabAddr,    "Crono Sett. 3 Mar abilitato",      0,  1,
+        /* 49 */eepromBank, chronoSet_3_MerEnabAddr,    "Crono Sett. 3 Mer abilitato",      0,  1,
+        /* 50 */eepromBank, chronoSet_3_GioEnabAddr,    "Crono Sett. 3 Gio abilitato",      0,  1,
+        /* 51 */eepromBank, chronoSet_3_VenEnabAddr,    "Crono Sett. 3 Ven abilitato",      0,  1,
+        /* 52 */eepromBank, chronoSet_3_SabEnabAddr,    "Crono Sett. 3 Sab abilitato",      0,  1,
+        /* 53 */eepromBank, chronoSet_3_DomEnabAddr,    "Crono Sett. 3 Dom abilitato",      0,  1,
         /*********/
-        /* 49 */eepromBank, chronoSet_4_OnAddr,         "Crono Sett. 4 ON Time",            0,  10,
-        /* 50 */eepromBank, chronoSet_4_OffAddr,        "Crono Sett. 4 OFF Time",           0,  10,
-        /* 51 */eepromBank, chronoSet_4_LunEnabAddr,    "Crono Sett. 4 Lun abilitato",      0,  1,
-        /* 52 */eepromBank, chronoSet_4_MarEnabAddr,    "Crono Sett. 4 Mar abilitato",      0,  1,
-        /* 53 */eepromBank, chronoSet_4_MerEnabAddr,    "Crono Sett. 4 Mer abilitato",      0,  1,
-        /* 54 */eepromBank, chronoSet_4_GioEnabAddr,    "Crono Sett. 4 Gio abilitato",      0,  1,
-        /* 55 */eepromBank, chronoSet_4_VenEnabAddr,    "Crono Sett. 4 Ven abilitato",      0,  1,
-        /* 56 */eepromBank, chronoSet_4_SabEnabAddr,    "Crono Sett. 4 Sab abilitato",      0,  1,
-        /* 57 */eepromBank, chronoSet_4_DomEnabAddr,    "Crono Sett. 4 Dom abilitato",      0,  1,
-        /*********/
-        /* 58 */eepromBank, chronoWkE_EnableAddr,       "Crono WeekEnd. abilitato",         0,  1,
-        /* 59 */eepromBank, chronoWkE_1_OnAddr,         "Crono WeekEnd. 1 ON Time",         0,  10,
-        /* 60 */eepromBank, chronoWkE_1_OffAddr,        "Crono WeekEnd. 1 ON Time",         0,  10,
-        /* 61 */eepromBank, chronoWkE_2_OnAddr,         "Crono WeekEnd. 2 OFF Time",        0,  10,
-        /* 62 */eepromBank, chronoWkE_2_OffAddr,        "Crono WeekEnd. 2 OFF Time",        0,  10,
+        /* 54 */eepromBank, chronoSet_4_OnAddr,         "Crono Sett. 4 ON Time",            0,  10,
+        /* 55 */eepromBank, chronoSet_4_OffAddr,        "Crono Sett. 4 OFF Time",           0,  10,
+        /* 56 */eepromBank, chronoSet_4_LunEnabAddr,    "Crono Sett. 4 Lun abilitato",      0,  1,
+        /* 57 */eepromBank, chronoSet_4_MarEnabAddr,    "Crono Sett. 4 Mar abilitato",      0,  1,
+        /* 58 */eepromBank, chronoSet_4_MerEnabAddr,    "Crono Sett. 4 Mer abilitato",      0,  1,
+        /* 59 */eepromBank, chronoSet_4_GioEnabAddr,    "Crono Sett. 4 Gio abilitato",      0,  1,
+        /* 60 */eepromBank, chronoSet_4_VenEnabAddr,    "Crono Sett. 4 Ven abilitato",      0,  1,
+        /* 61 */eepromBank, chronoSet_4_SabEnabAddr,    "Crono Sett. 4 Sab abilitato",      0,  1,
+        /* 62 */eepromBank, chronoSet_4_DomEnabAddr,    "Crono Sett. 4 Dom abilitato",      0,  1,
         /*********/
     };
 
@@ -328,6 +321,9 @@ public:
     void writeStoveIncPower();
     void writeStoveDecSetPoint();
     void writeStoveIncSetPoint();
+    void writeChronoEnable(bool val);
+    void setChronoSerialGet(bool newChronoSerialGet);
+
 private:
     static SerialProto *instance;
     explicit SerialProto(QObject *parent = nullptr);
@@ -344,7 +340,7 @@ private:
     float m_ambTemp, m_setTemp, m_tonCochlea;
     quint8 m_stoveYear, m_stoveMonth, m_stoveDay, m_stoveDoW,
         m_stoveHour, m_stoveMinutes, m_stoveSeconds;
-    bool m_chronoEnable;
+    bool m_chronoSerialGet;
 
     void readStoveInfo(quint8, quint8);
     void writeStoveCmd(quint8 page, quint8 address, quint8 value);
@@ -364,8 +360,17 @@ signals:
     void updatePower(quint8 setPower, quint8 flamePower);
     void updateSmoke(quint8 smokeTemp, quint8 smokeFanSpeed);
     void updateChronoEnable(bool chronoEnable);
+    void updateChronoWkEEnable(bool chronoWkEEnable);
+    void updateChronoWkE1On(quint8 chronoWkE1On);
+    void updateChronoWkE1Off(quint8 chronoWkE1Off);
+    void updateChronoWkE2On(quint8 chronoWkE2On);
+    void updateChronoWkE2Off(quint8 chronoWkE2Off);
+    void updateChronoDayEnable(bool chronoWkEEnable);
+    void updateChronoDay1On(quint8 chronoWkE1On);
+    void updateChronoDay1Off(quint8 chronoWkE1Off);
+    void updateChronoDay2On(quint8 chronoWkE2On);
+    void updateChronoDay2Off(quint8 chronoWkE2Off);
 
-    //, quint16 ambTempDC, quint8 fumesTemp, quint8 flamePower);
     void updateStoveDateTime(QDateTime stoveDateTime);
 
 private slots:

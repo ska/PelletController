@@ -36,6 +36,7 @@ QLabel#flameLab                             { color: #d60000;         font: 13pt
 QLabel#setPower                             { color: #d60000;         font: 15pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
 QLabel#setPowerPerc                         { color: #d60000;         font: 15pt;  font-weight: normal; font-family: "Advanced Dot Digital-7";}
 
+QWidget#chronoPage                          { background: #333333; }
 
 /* QProgressBar */
 QProgressBar                                { background: #6E0A1E; border:none; border-radius: 2px; }
@@ -49,16 +50,23 @@ QMessageBox QPushButton:pressed             { background: #6E0A1E; border:none;}
 QTabWidget::pane                            { background: #333333; border: 2px solid #000000;}
 QTabWidget QTabBar::tab                     { background: #333333; color: white; border: 1px solid #000000;  padding: 10px;}
 QTabWidget QTabBar::tab:selected            { background: #6E0A1E; border: 2px solid #000000;}
+
 /* QCheckBox */
-QCheckBox                                   { color: white; background: transparent; }
+QCheckBox                                   { color: white; }
+
+QCheckBox::indicator                        { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
+                                                                stop:0 rgba(255, 0, 0, 255), stop:1 rgba(64, 0, 0, 255)); }
+
+QCheckBox::indicator:checked                { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
+                                                                stop:0 rgba(0, 255, 0, 255), stop:1 rgba(0, 64, 0, 255)); }
+
 QCheckBox::indicator:disabled               { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
-                                                                stop:0 rgba(255, 0, 0, 255), stop:1 rgba(63, 0, 0, 255)); }
+                                                                stop:0 rgba(127, 127, 127, 255), stop:1 rgba(64, 64, 64, 255)); }
 
 QCheckBox::indicator:checked:disabled       { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
                                                                 stop:0 rgba(0, 255, 0, 255), stop:1 rgba(0, 64, 0, 255)); }
-
-QCheckBox::indicator                        { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
-                                                                stop:0 rgba(127, 127, 127, 255), stop:1 rgba(64, 64, 64, 255)); }
+/*
 QCheckBox#extendedID                        { color: white;  }
 QCheckBox::indicator#extendedID             { border: 3px solid #6E0A1E; background: none;}
 QCheckBox::indicator:checked#extendedID     { border: 8px solid #AD1625; background: none;}
+*/
