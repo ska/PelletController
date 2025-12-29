@@ -47,19 +47,14 @@ DEPENDPATH  += $$OUT_PWD/../MyCustomWidget/lib
 ####################################
 ## i5/i7 Arm32
 ####################################
+INCLUDEPATH += $$OUT_PWD/../QtSerialPort/include/
+LIBS += -L$$OUT_PWD/../QtSerialPort/lib/
+LIBS            += -lQt5SerialPort
+
 equals(QT_ARCH, "arm") {
     DEFINES += DEVICE=DISPLAY32
-    LIB_PATH=ThirdParty/Arm32/
 
-    INCLUDEPATH     += $$PWD/$$LIB_PATH/include/
-    DEPENDPATH      += $$PWD/$$LIB_PATH/lib/
-    DEPENDPATH      += $$PWD/$$LIB_PATH/include
-    LIBS            += -L$$PWD/$$LIB_PATH/lib/
-
-    LIBS            += -lQt5SerialPort
     LIBS            += -lwcollectionplugin
-
-
 }
 ####################################
 ## i10/i12 Arm64
@@ -72,16 +67,7 @@ equals(QT_ARCH, "arm64") {
 ####################################
 equals(QT_ARCH, "x86_64") {
     DEFINES += DEVICE=DESKTOP
-    LIB_PATH=ThirdParty/x86_64/
-    #LIB_PATH=../build/Desktop_5_13_2-Debug/LsCustomWidget
 
-    INCLUDEPATH     += $$PWD/$$LIB_PATH/include/
-    DEPENDPATH      += $$PWD/$$LIB_PATH/lib/
-    DEPENDPATH      += $$PWD/$$LIB_PATH/include
-    LIBS            += -L$$PWD/$$LIB_PATH/lib/
-
-
-    LIBS            += -lQt5SerialPort
     LIBS            += -lwcollectionplugin
 }
 # Default rules for deployment.
