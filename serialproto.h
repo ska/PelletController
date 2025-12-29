@@ -322,6 +322,8 @@ public:
     void writeStoveDecSetPoint();
     void writeStoveIncSetPoint();
     void writeChronoEnable(bool val);
+    void writeChronoWkeEnable(bool val);
+    void writeChronoWke1On(bool val);
     void setChronoSerialGet(bool newChronoSerialGet);
 
 private:

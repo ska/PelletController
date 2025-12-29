@@ -126,8 +126,8 @@ void SerialProto::sendData(QByteArray data)
         m_serial.waitForBytesWritten(50);
         m_txMessages++;
     } else {
-        for(int i=0; i<data.length(); i++)
-            qDebug() << "sendData: " << QString("%1").arg((quint8)data.at(i) , 0, 16);
+        //for(int i=0; i<data.length(); i++)
+        //    qDebug() << "sendData: " << QString("%1").arg((quint8)data.at(i) , 0, 16);
     }
 }
 
@@ -205,7 +205,7 @@ void SerialProto::checkStoveReply()
 
             case ramParam(cochleaTurnsAddr ):
                 m_tonCochlea = (float)val / 10;
-                qDebug() << "Resp: cochleaTurnsAddr: " << m_tonCochlea;
+                //qDebug() << "Resp: cochleaTurnsAddr: " << m_tonCochlea;
                 break;
 
             case ramParam(stoveStateAddr ):
@@ -224,18 +224,18 @@ void SerialProto::checkStoveReply()
                 {
                     m_flamePower = 0;
                 }
-                qDebug() << "Resp: flamePowerAddr: " << m_flamePower;
+                //qDebug() << "Resp: flamePowerAddr: " << m_flamePower;
                 break;
 
             case ramParam(smokeFanSpeedAddr ):
                 m_smokeFanSpeed = (val*10)+250;
-                qDebug() << "Resp: smokeFanSpeedAddr: " << m_smokeFanSpeed;
+                //qDebug() << "Resp: smokeFanSpeedAddr: " << m_smokeFanSpeed;
                 break;
 
             case ramParam(smokeTempAddr ):
                 //corretta
                 m_smokeTemp = val;
-                qDebug() << "Resp: smokeTempAddr: " << m_smokeTemp;
+                //qDebug() << "Resp: smokeTempAddr: " << m_smokeTemp;
                 break;
 
             case ramParam(secondsCurrentAddr ):
@@ -266,12 +266,12 @@ void SerialProto::checkStoveReply()
                 break;
             case eepromParam(powerSetAddr ):
                 m_setPower = val;
-                qDebug() << "Resp: powerSetAddr: " << m_setPower;
+                //qDebug() << "Resp: powerSetAddr: " << m_setPower;
                 emit updatePower(m_setPower, m_flamePower);
                 break;
                 /*********/
             case eepromParam(chronoEnableAddr ):
-                qDebug() << "Resp: chronoEnableAddr: " << val;
+                //qDebug() << "Resp: chronoEnableAddr: " << val;
                 emit updateChronoEnable((bool)val);
                 break;
                 /*********/
@@ -290,7 +290,7 @@ void SerialProto::checkStoveReply()
             case eepromParam( chronoWkE_2_OffAddr ):
                 emit updateChronoWkE2Off((quint8)val);
                 break;
-
+#if 0
                 /*********/
             case eepromParam( chronoDay_EnableAddr ):
                 qDebug() << "Resp: chronoDay_EnableAddr: " << val;
@@ -425,14 +425,16 @@ void SerialProto::checkStoveReply()
             case eepromParam( chronoSet_4_DomEnabAddr ):
                 qDebug() << "Resp: chronoSet_4_DomEnabAddr: " << val;
                 break;
-
+#endif
 
             default:
+#if 0
                 qWarning() << "Unknow message";
                 qDebug() << QString("Resp: Chk: %1 - val: %2 - param: %3").arg(checksum, 0, 16)
                                 .arg(val, 0, 16)
                                 .arg(param, 0, 16);
                 //se il messaggio non e' parsato lo rollo indietro
+#endif
                 m_rxMessages--;
                 break;
         }
@@ -486,7 +488,6 @@ void SerialProto::getStoveInfos()
             m_loopTimer.stop();
             m_loopTimer.start(SERIAL_MESSAGE_DELAY);
         }
-
 
         if(m_state < requestsMapSize)
             readStoveInfo( requestsMap[m_state].page,  requestsMap[m_state].address );
@@ -593,5 +594,21 @@ void SerialProto::writeChronoEnable(bool val)
     m_previousState = chronoEnableIndex;
     writeStoveCmd(requestsMap[chronoEnableIndex].page,
                   requestsMap[chronoEnableIndex].address,
+                  val);
+}
+
+void SerialProto::writeChronoWkeEnable(bool val)
+{
+    m_previousState = chronoWkE_EnableIndex;
+    writeStoveCmd(requestsMap[chronoWkE_EnableIndex].page,
+                  requestsMap[chronoWkE_EnableIndex].address,
+                  val);
+}
+
+void SerialProto::writeChronoWke1On(bool val)
+{
+    m_previousState = chronoWkE_1_OnIndex;
+    writeStoveCmd(requestsMap[chronoWkE_1_OnIndex].page,
+                  requestsMap[chronoWkE_1_OnIndex].address,
                   val);
 }
