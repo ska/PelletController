@@ -1,14 +1,17 @@
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+#include <QSignalMapper>
 #include <QMessageBox>
 #include <QMainWindow>
 #include <QTouchEvent>
+#include <QLCDNumber>
 #include <QKeyEvent>
 #include <QTimeEdit>
 #include <QThread>
 #include <QFile>
 #include "serialproto.h"
+#include "timeeditdialog.h"
 
 QT_BEGIN_NAMESPACE
 namespace Ui {
@@ -29,46 +32,40 @@ protected:
 
 private slots:
     void showMainStack();
-    void updateAmbTemp(float f);
-    void updateSetTemp(float f);
-    void updateStoveState(quint8 u, QString s);
-    void updatePower(quint8 set, quint8 flame);
-    void updateStoveDateTime(QDateTime dt);
-    void updateStats(quint32 txMessages, quint32 rxMessages, quint32 rxErrors);
-    void handleStatteBtn();
-    void handleStateForceBtn();
-    void handlePowerMinBtn();
-    void handlePowerPlusBtn();
-    void handleSetPointMinBtn();
-    void handleSetPointPlusBtn();
-    void updateChronoEnable(bool b);
-    void updateChronoWkeEnable(bool b);
-    void updateChronoWkE1On(quint8 u);
-    void updateChronoWkE1Off(quint8 u);
-    void updateChronoWkE2On(quint8 u);
-    void updateChronoWkE2Off(quint8 u);
-    void updateChronoDayEnable(bool b);
-    void updateChronoDay1On(quint8 u);
-    void updateChronoDay1Off(quint8 u);
-    void updateChronoDay2On(quint8 u);
-    void updateChronoDay2Off(quint8 u);
+    void on_updateAmbTemp(float f);
+    void on_updateSetTemp(float f);
+    void on_updateStoveState(quint8 u, QString s);
+    void on_updatePower(quint8 set, quint8 flame);
+    void on_updateStoveDateTime(QDateTime dt);
+    void on_updateStats(quint32 txMessages, quint32 rxMessages, quint32 rxErrors);
+    void on_updateChronoEnable(bool b);
+    void on_updateChronoWkeEnable(bool b);
+    void on_updateChronoWkE1On(quint8 u);
 
-    void handleClickableLabel();
+    void restartTimer();
 
     void on_chronoEnableCB_stateChanged(int arg1);
-
+    void on_chronoWkEEnableCB_stateChanged(int arg1);
     void on_chronoWkEStart1CB_stateChanged(int arg1);
+    //void on_chronoWkEStart1LCD_clicked();
+    void on_stateBtn_released();
+    void on_stateOffForceBtn_released();
+    void on_setPointMinBtn_released();
+    void on_setPointPlusBtn_released();
+    void on_powerMinBtn_released();
+    void on_powerPlusBtn_released();
+    void on_chronoClbl_clicked();
 
-    void on_chronoWkEStop1CB_stateChanged(int arg1);
-
-    void on_chronoWkEStart2CB_stateChanged(int arg1);
-
-    void on_chronoWkEStop2CB_stateChanged(int arg1);
+    void chronoWkEStart1_update(quint8);
+    void slot_chronoWkE_LCD_clicked(QWidget *w);
 
 private:
     Ui::MainWindow *ui;
     SerialProto *m_serProto;
     QTimer *m_chronoShowTimer = nullptr;
-    void updateChronoWdg(QCheckBox *cb, QTimeEdit *te, quint8 u);
+    TimeEditDialog *tm;
+    QSignalMapper *mapper;
+
+    void updateUiData_ChronoWdg(QCheckBox *cb, QLCDNumber *lcd, quint8 u);
 };
 #endif // MAINWINDOW_H
