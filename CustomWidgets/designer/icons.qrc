@@ -1,0 +1,6 @@
+<RCC>
+    <qresource prefix="/">
+        <file>heat-red.png</file>
+        <file>heat-black.png</file>
+    </qresource>
+</RCC>

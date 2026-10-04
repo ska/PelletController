@@ -1,0 +1,3 @@
+[submodule "ThirdParty/qtserialport"]
+	path = ThirdParty/qtserialport
+	url = https://github.com/qt/qtserialport.git
