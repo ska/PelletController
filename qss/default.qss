@@ -79,6 +79,7 @@ QPushButton#dayChip:checked         { background: #1F3B38; color: #4FB3A9; borde
 
 /* diagnostic page */
 QLabel#diagValue                    { font-size: 18px; font-weight: bold; }
+QLabel#diagSection                  { color: #7DB7FF; font-size: 15px; font-weight: bold; padding-top: 8px; }
 QLabel#diagValue[look="ok"]         { color: #4FB3A9; }
 QLabel#diagValue[look="warning"]    { color: #F6C27A; }
 QLabel#diagValue[look="error"]      { color: #F2555A; }

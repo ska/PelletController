@@ -1,11 +1,13 @@
 #include "mainwindow.h"
 #include "serialproto.h"
+#include "homeassistant.h"
 #include "common.h"
 
 #include <QApplication>
 #include <QSettings>
 #include <QDebug>
 #include <QDir>
+#include <QElapsedTimer>
 
 int main(int argc, char *argv[])
 {
@@ -42,7 +44,13 @@ int main(int argc, char *argv[])
     SerialProto *s = SerialProto::getInstance();
     s->setSerPort(settings.value("SERIAL/port", SERIAL_PORT_DEFAULT).toString());
 
-    MainWindow w;
+    /* Home Assistant (MQTT, read only): only with [MQTT] broker_addr set */
+    const MqttConfig mqtt = MqttConfig::load(settings);
+    HomeAssistant *ha = mqtt.enabled() ? new HomeAssistant(s, mqtt, &a) : nullptr;
+    if(!ha)
+        qInfo() << "MQTT off: no [MQTT] broker_addr in setting.ini";
+
+    MainWindow w(ha);
     int ret;
 
 #if DEVICE == DESKTOP
@@ -58,6 +66,15 @@ int main(int argc, char *argv[])
 
 
     qInfo() << "End Application";
+    if(ha)
+    {
+        //offline on the status topic, then a clean disconnect
+        ha->shutdown();
+        QElapsedTimer t;
+        t.start();
+        while(QMqttClient::Disconnected != ha->clientState() && t.elapsed() < 1000)
+            QCoreApplication::processEvents(QEventLoop::AllEvents, 50);
+    }
     s->closeSerPort();
     return ret;
 }

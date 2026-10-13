@@ -16,7 +16,7 @@
 #define CHRONO_IDLE_MS  (10 * 1000)
 #define DIAG_IDLE_MS    (60 * 1000)     //Time to watch the counters
 
-MainWindow::MainWindow(QWidget *parent)
+MainWindow::MainWindow(HomeAssistant *ha, QWidget *parent)
     : QMainWindow(parent)
 {
     QFile qss(":/qss/default.qss");
@@ -29,6 +29,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_mainPage = new MainPage(m_proto, m_stack);
     m_chronoPage = new ChronoPage(m_proto, m_stack);
     m_diagPage = new DiagPage(m_proto, m_stack);
+    m_diagPage->setHomeAssistant(ha);
     m_stack->addWidget(m_mainPage);
     m_stack->addWidget(m_chronoPage);
     m_stack->addWidget(m_diagPage);

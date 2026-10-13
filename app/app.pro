@@ -35,6 +35,7 @@ equals(QT_ARCH, "x86_64") {
 }
 
 INCLUDEPATH += $$PC_SRC
+PC_MODULES += mqtt
 include($$PC_SRC/ThirdParty/qtmodules.pri)
 include($$PC_SRC/CustomWidgets/customwidgets.pri)
 include($$PC_SRC/version.pri)
@@ -45,6 +46,7 @@ SOURCES += \
     $$PC_SRC/chronopage.cpp \
     $$PC_SRC/clockdialog.cpp \
     $$PC_SRC/diagpage.cpp \
+    $$PC_SRC/homeassistant.cpp \
     $$PC_SRC/main.cpp \
     $$PC_SRC/mainpage.cpp \
     $$PC_SRC/mainwindow.cpp \
@@ -56,6 +58,7 @@ HEADERS += \
     $$PC_SRC/chronopage.h \
     $$PC_SRC/clockdialog.h \
     $$PC_SRC/diagpage.h \
+    $$PC_SRC/homeassistant.h \
     $$PC_SRC/common.h \
     $$PC_SRC/mainpage.h \
     $$PC_SRC/mainwindow.h \

@@ -3,6 +3,7 @@
 
 #include <QWidget>
 
+class HomeAssistant;
 class QDateTime;
 class QLabel;
 class SerialProto;
@@ -19,6 +20,8 @@ class DiagPage : public QWidget
 
 public:
     explicit DiagPage(SerialProto *proto, QWidget *parent = nullptr);
+
+    void setHomeAssistant(HomeAssistant *ha);   //nullptr: MQTT off
 
 signals:
     void backRequested();
@@ -42,6 +45,9 @@ private:
     QLabel *m_smoke;
     QLabel *m_fan;
     QLabel *m_clock;
+    QLabel *m_mqtt;
+    QLabel *m_broker;
+    QLabel *m_published;
 };
 
 #endif // DIAGPAGE_H

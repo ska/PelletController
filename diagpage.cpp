@@ -1,6 +1,7 @@
 #include "diagpage.h"
 
 #include "common.h"
+#include "homeassistant.h"
 #include "serialproto.h"
 #include "uiicons.h"
 
@@ -72,6 +73,12 @@ DiagPage::DiagPage(SerialProto *proto, QWidget *parent)
     m_chk = addRow(g, "Checksum errors (Chk)");
     m_tmo = addRow(g, "No reply (Tmo)");
     m_rate = addRow(g, "Valid");
+    QLabel *ha = new QLabel("Home Assistant");
+    ha->setObjectName("diagSection");
+    g->addWidget(ha, g->rowCount(), 0, 1, 2);
+    m_mqtt = addRow(g, "MQTT");
+    m_broker = addRow(g, "Broker");
+    m_published = addRow(g, "Messages sent");
 
     cards->addWidget(card("Stove", &g, this), 1);
     m_state = addRow(g, "State");
@@ -87,6 +94,7 @@ DiagPage::DiagPage(SerialProto *proto, QWidget *parent)
     root->addLayout(cards, 1);
 
     m_port->setText(m_proto->serPort());
+    setHomeAssistant(nullptr);
     setLink(m_proto->linkState());
 
     connect(m_proto, &SerialProto::linkStateChanged, this, &DiagPage::setLink);
@@ -145,4 +153,28 @@ void DiagPage::setStats(quint32 tx, quint32 rx, quint32 err, quint32 chk, quint3
     m_chk->setText(QString::number(chk));
     m_tmo->setText(QString::number(tmo));
     m_rate->setText(tx ? QString("%1 %").arg(100.0 * rx / tx, 0, 'f', 1) : QString("--"));
+}
+
+void DiagPage::setHomeAssistant(HomeAssistant *ha)
+{
+    if(!ha)
+    {
+        m_mqtt->setText("off (no broker in setting.ini)");
+        m_mqtt->setProperty("look", "");
+        m_broker->setText("--");
+        m_published->setText("--");
+        return;
+    }
+    m_broker->setText(ha->broker());
+    auto showState = [this](int state) {
+        const bool up = (QMqttClient::Connected == state);
+        m_mqtt->setText(up ? "connected" : (QMqttClient::Connecting == state ? "connecting" : "disconnected"));
+        m_mqtt->setProperty("look", up ? "ok" : "warning");
+        m_mqtt->style()->unpolish(m_mqtt);
+        m_mqtt->style()->polish(m_mqtt);
+    };
+    showState(ha->clientState());
+    m_published->setText(QString::number(ha->published()));
+    connect(ha, &HomeAssistant::clientStateChanged, this, showState);
+    connect(ha, &HomeAssistant::publishedChanged, this, [this](quint32 n) { m_published->setText(QString::number(n)); });
 }

@@ -3,6 +3,7 @@
 #include <QTest>
 
 #include "serialproto.h"
+#include "testutil.h"
 #include "stovesim.h"
 
 /*
@@ -304,17 +305,16 @@ private slots:
         start();
         QTRY_VERIFY_WITH_TIMEOUT(!power.isEmpty(), 8000);
         QCOMPARE(power.last().at(1).toInt(), 8 * 90 / 16 + 10);
+        //The first emission may come before the new state is read: 0 within a round
         m_sim->setRam(0x21, 0);
-        const int n = power.count();
-        QTRY_VERIFY_WITH_TIMEOUT(power.count() > n, 10000);
-        QCOMPARE(power.last().at(1).toInt(), 0);
+        QTRY_COMPARE_WITH_TIMEOUT(power.last().at(1).toInt(), 0, 12000);
     }
 };
 
 int runSerialProtoTests(int argc, char *argv[])
 {
     TstSerialProto t;
-    return QTest::qExec(&t, argc, argv);
+    return runTestClass(&t, argc, argv);
 }
 
 #include "tst_serialproto.moc"

@@ -4,6 +4,7 @@
 #include <QMainWindow>
 
 class ChronoPage;
+class HomeAssistant;
 class DiagPage;
 class MainPage;
 class QStackedWidget;
@@ -17,7 +18,7 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    explicit MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(HomeAssistant *ha = nullptr, QWidget *parent = nullptr);
 
 protected:
     bool eventFilter(QObject *watched, QEvent *event) override;

@@ -31,3 +31,4 @@ defineTest(pcBuildModule) {
 }
 
 pcBuildModule(qtserialport, Qt5SerialPort)
+pcBuildModule(qtmqtt, Qt5Mqtt)

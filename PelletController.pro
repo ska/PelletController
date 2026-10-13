@@ -1,7 +1,7 @@
 # Pellet Controller: open this file in Qt Creator or run qmake on it.
 #
-#   ThirdParty     QtSerialPort, static, from the git submodule (missing in
-#                  the desktop Qt and on the panel)
+#   ThirdParty     QtSerialPort and QtMqtt, static, from the git submodules
+#                  (missing in the desktop Qt and on the panel)
 #                  (first checkout: git submodule update --init)
 #   CustomWidgets  the custom widgets used by the GUI, static library
 #   app            the application -> <build>/bin_<arch>/PelletController

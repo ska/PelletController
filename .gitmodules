@@ -1,3 +1,7 @@
 [submodule "ThirdParty/qtserialport"]
 	path = ThirdParty/qtserialport
 	url = https://github.com/qt/qtserialport.git
+[submodule "ThirdParty/qtmqtt"]
+	path = ThirdParty/qtmqtt
+	url = https://github.com/qt/qtmqtt.git
+	shallow = true

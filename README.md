@@ -27,7 +27,9 @@ development.
   clock face to the minute
 - Diagnostic page (tap "Stove"): serial port and link, Tx / Rx / errors /
   checksum errors / timeouts, power in use, smoke fan, stove clock,
-  version
+  version, Home Assistant connection
+- Home Assistant through MQTT, read only: a "Pellet stove" device with the
+  stove values, found by MQTT discovery (see [Home Assistant](#home-assistant))
 - Serial link state: "No serial port" while the port is missing (opened
   again every 3 s, e.g. after the USB adapter is plugged back), "No reply"
   after 10 s without a valid reply
@@ -58,7 +60,7 @@ stove simulator (`tools/stovesim`).
 | `qss/`, `icons/` | Style sheet and stroke icons, tinted at run time (`resources.qrc`) |
 | `app/app.pro` | Application project, sources taken from the root |
 | `CustomWidgets/` | Custom widgets, static library |
-| `ThirdParty/` | External modules as git submodules: Qt Serial Port 5.13.2, built static |
+| `ThirdParty/` | External modules as git submodules: Qt Serial Port and Qt MQTT 5.13.2, built static |
 | `tools/stovesim/` | Stove board simulator on a pseudo terminal (Linux) |
 | `tools/stovedump/` | Read only dump of the stove RAM and EEPROM |
 | `tests/` | Unit tests (QtTest): `SerialProto` against the simulator |
@@ -79,6 +81,7 @@ Application sources:
 | `timepicker.*` | Time picker of the chrono slots (clock face, tens of minutes, slot off) |
 | `clockdialog.*` | Stove clock setting (date -/+, clock face to the minute) |
 | `uiicons.*` | SVG icons tinted with one color |
+| `homeassistant.*` | Home Assistant through MQTT: settings, state, discovery |
 | `serialproto.*` | `SerialProto` singleton: serial port, polling, read and write of the stove parameters |
 | `common.h` | Name and version (`SW_NAME_VER`) |
 
@@ -172,6 +175,59 @@ a 2 s pause after each round. On the chrono page only the chrono
 parameters are read. The I/O is non-blocking: a reply is complete when the
 line stays idle for 100 ms, writes are queued and sent one at a time.
 
+## Home Assistant
+
+The panel publishes the stove values to an MQTT broker and announces them
+to Home Assistant with MQTT discovery: a device "Pellet stove" appears in
+the MQTT integration. Read only: Home Assistant cannot switch the stove,
+change the setpoint or the power, reset an alarm or edit the chrono.
+
+`setting.ini`, as RoomSense and AcquaThermoNet (without `broker_addr` MQTT
+is off and the panel works as before):
+
+```ini
+[MQTT]
+broker_addr=192.0.2.10
+broker_port=1883
+; used only when both are set
+broker_uname=
+broker_password=
+; topics PelletController/<unique_id>/..., client id PelletController-<unique_id>
+; (empty: the host name)
+unique_id=stufa
+```
+
+Entities:
+
+| Entity | Type | From |
+|---|---|---|
+| Room temperature, Setpoint, Smoke temperature | sensor, °C | RAM `01`, EEPROM `7D`, RAM `5A` |
+| State | sensor | RAM `21` ("Working", "Off", "Pellet Missing", ...) |
+| Alarm | binary sensor, problem | states 8-10 |
+| Flame | sensor, % | RAM `34` |
+| Smoke fan | sensor, rpm | RAM `37` |
+| Power, Power in use | sensor | EEPROM `7F`, RAM `19` (0 when none) |
+| Stove link | binary sensor, connectivity | port open and the stove answering |
+
+Topics (`<base>` = `PelletController/<unique_id>`):
+
+| Topic | Retained | Payload |
+|---|---|---|
+| `<base>/status` | yes | `online` at the connection, `offline` as last will and at exit |
+| `<base>/link` | yes | `online` while the stove answers, `offline` otherwise |
+| `<base>/state` | yes | one JSON object with all the values, `null` until read; sent when it changes, at most every 10 s |
+| `homeassistant/<sensor or binary_sensor>/PelletController_<unique_id>_<key>/config` | yes | discovery, sent at the connection and when `homeassistant/status` becomes `online` |
+
+```json
+{"room_temp":20.5,"setpoint":21.5,"state":"Working","state_code":4,"alarm":false,
+ "flame":55,"smoke_temp":142,"smoke_fan":1980,"power":3,"power_in_use":3,"link":true}
+```
+
+Every entity is unavailable while the panel is offline; all but "Stove
+link" also while the stove does not answer. The client reconnects by
+itself (after 1, 2, 5, 10, then every 30 s); the diagnostic page shows the
+MQTT state, the broker and the messages sent.
+
 ## Build
 
 Requirements: Qt 5.13.2 (desktop) or the ARM SDK of the panel, and the
@@ -191,14 +247,15 @@ make -j8
 ```
 
 The build runs in order:
-1. `ThirdParty`: Qt Serial Port from `ThirdParty/qtserialport`, built static
+1. `ThirdParty`: Qt Serial Port from `ThirdParty/qtserialport` and Qt MQTT
+   from `ThirdParty/qtmqtt` (Home Assistant), built static
    with the qmake in use, only when the library is missing (after changing
    the submodule, delete `<build>/ThirdParty`)
 2. `CustomWidgets`: `libcustomwidgets.a`
 3. `app`: the application, linked with both, in `<build>/bin_<arch>/`
 
 No shared library to deploy besides Qt itself: the panel does not have
-`libQt5SerialPort`.
+`libQt5SerialPort` nor `libQt5Mqtt`.
 
 The target comes from `QT_ARCH`: `x86_64` builds the desktop version
 (800x480 window), `arm` and `arm64` build the frameless full screen version
@@ -277,14 +334,18 @@ Useful to check the parameter map of a stove model against
 ## Tests
 
 `tests/` (QtTest, Linux) runs `SerialProto` against the simulator, with the
-real timings (one request every 200 ms), in about 70 s: polling sequence,
+real timings (one request every 200 ms), in about 80 s: polling sequence,
 checksum and echo errors with one retry, stove not answering, write
 verified and write not stored, setpoint limits, port unplugged and plugged
-back, chrono round, flame power. No real port is used. On a busy machine
+back, chrono round and writes, stove clock, flame power. No real port is used. On a busy machine
 the simulator can answer late: the tests that check an exact request
 sequence are then skipped (`SKIP`, "simulator replies late"), not failed.
 `DEFINES+=SIM_REPLY_DELAY=<ms>` changes the simulator reply delay
 (default 40 ms).
+
+The Home Assistant tests check the settings, the topics, the discovery
+(no command topic) and the state JSON, without a broker. One test
+function: `./tests/tests <name>` (passed only to the class that has it).
 
 ```sh
 qmake PelletController.pro CONFIG+=tests && make

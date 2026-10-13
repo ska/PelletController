@@ -4,6 +4,9 @@
 #   QtSerialPort missing in the desktop Qt, and on the device only in the
 #                SDK sysroot, not on the panel: always from
 #                ThirdParty/qtserialport, static
+#   QtMqtt       in none of the Qt used (desktop, SDK, panel): always from
+#                ThirdParty/qtmqtt, static; linked only by the projects
+#                that ask for it with PC_MODULES += mqtt (Home Assistant)
 #
 # Include it in a project to link them; ThirdParty.pro must be built first
 # (the top level PelletController.pro takes care of the order).
@@ -25,5 +28,12 @@ PC_THIRDPARTY_BUILD = $$PC_BUILD/ThirdParty
     exists($$PC_QMODULE) {
         PC_QT_FEATURES = $$fromfile($$PC_QMODULE, QT.global_private.enabled_features)
         contains(PC_QT_FEATURES, libudev): LIBS += $$fromfile($$PC_QMODULE, QMAKE_LIBS_LIBUDEV)
+    }
+
+    contains(PC_MODULES, mqtt) {
+        QT             += network
+        INCLUDEPATH    += $$PC_THIRDPARTY_BUILD/qtmqtt/include
+        LIBS           += $$PC_THIRDPARTY_BUILD/qtmqtt/lib/libQt5Mqtt.a
+        PRE_TARGETDEPS += $$PC_THIRDPARTY_BUILD/qtmqtt/lib/libQt5Mqtt.a
     }
 }
