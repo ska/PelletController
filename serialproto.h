@@ -137,7 +137,7 @@ public:
     };
     Q_ENUM(StoveState)
 
-    /* Serial link as shown on the panel (issue 10) */
+    /* Serial link as shown on the panel: port, stove answering */
     enum LinkState {
         LinkOk = 0,                         //Port open, valid replies (or nothing known yet)
         LinkPortClosed,                     //Port not open or lost, opened again every SERIAL_REOPEN_DELAY

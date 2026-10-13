@@ -58,7 +58,8 @@ void SerialProto::setSerPort(const QString &serPortName)
 }
 
 /* Opens the port; if it fails, tries again every SERIAL_REOPEN_DELAY until
- * closeSerPort (issue 10). The polling starts here when already wanted. */
+ * closeSerPort (USB adapter missing or unplugged). The polling starts here
+ * when already wanted. */
 bool SerialProto::openSerPort()
 {
     m_reopenTimer.stop();
@@ -243,7 +244,7 @@ void SerialProto::processStoveReply()
     }
     else if(stoveRxData.length() == 4 && stoveRxData.startsWith(m_readSent))
     {
-        //Risposta a lettura: tolgo l'eco della richiesta, controllata (issue 8)
+        //Risposta a lettura: eco uguale alla richiesta, poi la tolgo (una risposta di solo eco non e' un valore)
         stoveRxData.remove(0,2);
         valid = true;
     }
@@ -287,7 +288,8 @@ void SerialProto::processStoveReply()
 }
 
 /* A valid value read (or confirmed by a write): kept and emitted. Every
- * parameter counts in Rx, also the ones the panel does not use (issue 27) */
+ * parameter counts in Rx, also the ones the panel does not use, so that
+ * Tx = Rx + Err + Chk + Tmo */
 void SerialProto::storeValue(RequestsIndex index, quint8 val)
 {
     switch (index)
@@ -305,7 +307,7 @@ void SerialProto::storeValue(RequestsIndex index, quint8 val)
                                                 : QString("Unknown (%1)").arg(m_stoveState));
         break;
     case flamePowerIndex:
-        //From 0-16 to 10-100%, 0 when Off or from Final Cleaning on (issue 11)
+        //From 0-16 to 10-100%, 0 when Off or from Final Cleaning on (no stale value)
         if (m_stoveState > Off && m_stoveState < FinalCleaning)
             m_flamePower = (((quint16)val*90)/16)+10;
         else
@@ -514,7 +516,7 @@ void SerialProto::sendWrite()
 }
 
 /* Write reply: the echo of the 4 bytes sent, then 0x80 + bank + address +
- * value and the value written (issue 9) */
+ * value and the value written: anything else is not a confirmed write */
 bool SerialProto::writeConfirmed(const QByteArray &reply) const
 {
     if(reply.length() != 6 || !reply.startsWith(m_writeSent))

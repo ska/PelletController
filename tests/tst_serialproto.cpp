@@ -109,7 +109,7 @@ private slots:
         QCOMPARE(delta(3), 1u);
     }
 
-    /* Wrong echo: Err + 1, read again once (issue 8) */
+    /* Wrong echo: Err + 1, read again once */
     void echoRetry()
     {
         m_sim->corruptEchoes(1, 0x21);
@@ -201,7 +201,7 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(int(m_sim->eeprom(0x7D)), 59, 2000);
     }
 
-    /* USB adapter unplugged and plugged back (issue 10) */
+    /* USB adapter unplugged and plugged back: port reopened, polling restarts */
     void unplugReplug()
     {
         QSignalSpy link(m_proto, SIGNAL(linkStateChanged(quint8)));
@@ -273,7 +273,7 @@ private slots:
         QCOMPARE(dt.time().minute(), 35);
     }
 
-    /* Chrono page: chrono on/off, then 42-74 in order, last one included (issue 6) */
+    /* Chrono page: chrono on/off, then 42-74 in order, last one included */
     void chronoRound()
     {
         QSignalSpy chrono(m_proto, SIGNAL(chronoRead(quint8,quint8)));
@@ -285,7 +285,7 @@ private slots:
                 expected << QString("%1").arg(a, 2, 16, QChar('0'));
         SKIP_IF_LATE(0, 0, 0);
         QCOMPARE(sequence(48), expected.join(' '));
-        //Every valid reply counted, also for the parameters the panel does not use (issue 27)
+        //Every valid reply counted, also for the parameters the panel does not use
         QVERIFY(m_stats.at(0) - m_stats.at(1) <= 1);
         //Every chrono parameter emitted with its index
         QTRY_VERIFY_WITH_TIMEOUT(chrono.count() >= 48, 1000);
@@ -296,7 +296,7 @@ private slots:
         QVERIFY(found);
     }
 
-    /* Flame power from the stove while working, 0 when Off (issue 11) */
+    /* Flame power from the stove while working, 0 when Off */
     void flamePower()
     {
         QSignalSpy power(m_proto, SIGNAL(updatePower(quint8,quint8)));

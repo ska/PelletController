@@ -17,7 +17,7 @@ class wToggle;
  * tabs Weekend / Daily / Weekly. Weekend and daily: program on/off and two
  * slots, each start and stop time set with the picker or off. Weekly:
  * program on/off, slot 1-4 selector, start, stop and the days of the
- * selected slot (map checked on the stove display, issue 19).
+ * selected slot (map checked against the stove display).
  */
 class ChronoPage : public QWidget
 {

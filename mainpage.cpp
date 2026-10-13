@@ -233,7 +233,7 @@ void MainPage::setStoveState(quint8 state, const QString &name)
 }
 
 /* Port closed or stove not answering: shown in place of the state until
- * the next state read (issue 10) */
+ * the next state read */
 void MainPage::setLink(quint8 linkState)
 {
     m_link = linkState;
@@ -305,7 +305,7 @@ void MainPage::applyLook()
     repolish(m_stateChip);
     repolish(m_chipText);
 
-    /* Alarm: hint and Reset only (issue 22) */
+    /* Alarm: hint and Reset only (On/Off would write Starting or Final Cleaning) */
     const bool alarm = (Look::Alarm == m_look);
     QString hint;
     if(alarm)

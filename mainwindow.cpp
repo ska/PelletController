@@ -90,7 +90,7 @@ void MainWindow::setStoveClock()
         m_proto->writeClock(dialog.dateTime());
 }
 
-/* Write not confirmed by the stove after the retry (issue 9): not modal,
+/* Write not confirmed by the stove even after the retry: not modal,
  * the polling goes on and shows the value the stove really has */
 void MainWindow::showWriteFailed(quint8 page, quint8 address, quint8 value)
 {

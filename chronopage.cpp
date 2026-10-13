@@ -275,7 +275,7 @@ QPushButton *ChronoPage::timeButton(const QString &caption, int index, bool edit
 }
 
 /* clicked(bool) comes only from the user: a value read never goes back to
- * the stove (issue 3) */
+ * the stove (it would rewrite the EEPROM at every poll) */
 void ChronoPage::addToggle(wToggle *toggle, int index, bool editable)
 {
     m_toggles.insert(index, toggle);

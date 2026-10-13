@@ -62,7 +62,7 @@ stove simulator (`tools/stovesim`).
 | `tools/stovesim/` | Stove board simulator on a pseudo terminal (Linux) |
 | `tools/stovedump/` | Read only dump of the stove RAM and EEPROM |
 | `tests/` | Unit tests (QtTest): `SerialProto` against the simulator |
-| `docs/` | [Serial protocol](docs/PROTOCOL.md), [known issues](docs/ISSUES.md), screenshots |
+| `docs/` | [Serial protocol](docs/PROTOCOL.md), screenshots |
 | `PelletController.pro` | Top level `subdirs` project: ThirdParty, CustomWidgets, app (+ tests, tools) |
 | `.qmake.conf` | `PC_SRC` and `PC_BUILD`, the source and build roots for every project |
 | `version.pri` | Version from the latest git tag |
@@ -290,11 +290,3 @@ sequence are then skipped (`SKIP`, "simulator replies late"), not failed.
 qmake PelletController.pro CONFIG+=tests && make
 ./tests/tests
 ```
-
-## Known issues
-
-The code review of 0.1.0 found several bugs, some of which could change
-the stove settings without the user asking: they are fixed in 0.2.0. The
-redesign of 0.3.0 closed the code cleanup issues and made every chrono
-program editable. Still open: the texts are not translatable (`tr()` not
-used). Details and fixes in [docs/ISSUES.md](docs/ISSUES.md).
