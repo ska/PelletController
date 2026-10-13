@@ -12,8 +12,6 @@
 #   CONFIG+=tools     stove simulator (tools/stovesim), Linux, and read
 #                     only dump of the stove memory (tools/stovedump),
 #                     also ARM
-#   CONFIG+=designer  Qt Designer plugin with the custom widgets
-#                     (CustomWidgets/designer, make install)
 
 TEMPLATE = subdirs
 
@@ -30,11 +28,6 @@ CONFIG(tools) {
     stovesim.subdir = tools/stovesim
     stovedump.subdir = tools/stovedump
     stovedump.depends = ThirdParty
-}
-
-CONFIG(designer) {
-    SUBDIRS += designer
-    designer.subdir = CustomWidgets/designer
 }
 
 OTHER_FILES += \

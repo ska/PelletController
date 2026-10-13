@@ -8,7 +8,9 @@
 #include <termios.h>
 #include <unistd.h>
 
-#define SIM_REPLY_DELAY     (40)        //ms between the request and the reply
+#ifndef SIM_REPLY_DELAY
+#define SIM_REPLY_DELAY     (40)        //ms between the request and the reply (qmake DEFINES+=SIM_REPLY_DELAY=n)
+#endif
 #define SIM_STATE_STEP      (10*1000)   //ms in Starting / Final Cleaning with auto states
 
 /* Stove states and addresses used here (docs/PROTOCOL.md) */
@@ -38,6 +40,7 @@ void StoveSim::loadDefaults()
     setRam(0x34, 8);            //Flame power
     setRam(0x37, 60);           //Smoke fan speed
     setRam(0x5A, 25);           //Smoke temperature
+    setRam(0x19, 0x90);         //Power in use (0x90 when Off)
     setRam(0x65, 0);            //Seconds
     setRam(0x66, 6);            //Day of week
     setRam(0x67, 18);           //Hours
@@ -136,9 +139,15 @@ void StoveSim::setAutoStates(bool on)
 void StoveSim::stepState()
 {
     if(ram(0x21) == Starting)
+    {
         setRam(0x21, Working);
+        setRam(0x19, eeprom(0x7F));
+    }
     else if(ram(0x21) == FinalCleaning)
+    {
         setRam(0x21, Off);
+        setRam(0x19, 0x90);
+    }
 }
 
 void StoveSim::onReadable()
@@ -192,6 +201,9 @@ void StoveSim::handle(const QByteArray &request)
         if(stored)
         {
             bank(page)[address] = char(value);
+            //Clock set in EEPROM F8-FD (BCD): the board shows it in the RAM clock 66-6B
+            if(page == 0x20 && address >= 0xF8 && address <= 0xFD)
+                setRam(quint8(0x66 + (address - 0xF8)), quint8((value >> 4) * 10 + (value & 0x0F)));
             if(m_stateTimer && page == 0x00 && address == 0x21
                && (value == Starting || value == FinalCleaning))
                 m_stateTimer->start(SIM_STATE_STEP);

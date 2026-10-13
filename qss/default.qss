@@ -1,74 +1,95 @@
-/* QMainWindow */
-QMainWindow                                 { background: #05070d; /*border-image: url(:/images/redcarbon1920.jpg);*/}
+/* Pellet Controller panel, 800 x 480, dark (redesign B, palette of
+ * RoomSense): background #15181B, cards #22262B border #2E343A, text
+ * #F3F4F5, muted #A3ABB3, buttons #343A41, orange #F28C28 heat, blue
+ * #7DB7FF setpoint/chrono, teal #4FB3A9 ok, red #F2555A alarm */
 
-QDialog                                     { background: #333333; border: 1px solid #000000;  padding: 10px; }
-/* QWidget */
-QWidget#chronoPage                          { background: #333333; }
+QMainWindow, QStackedWidget, QWidget#mainPage, QWidget#chronoPage, QWidget#diagPage
+                                    { background: #15181B; }
+QLabel                              { color: #F3F4F5; font-size: 16px; background: transparent; }
 
-/* QFrame */
-QFrame#ambTempFrame                         { border: 0px solid #000000; }
-QFrame#setTempFrame                         { border: 0px solid #000000; }
-QFrame#framePower                           { border: 0px solid #000000; }
-QFrame#onOffFrame                           { border: 0px solid #000000; }
-QFrame#frameSetPoint                        { border: 0px solid #000000; }
+/* main page: header */
+QPushButton#clockButton             { background: transparent; padding: 0; min-height: 48px; }
+QPushButton#clockButton:pressed     { background: #22262B; }
+QLabel#clockLabel                   { font-size: 34px; font-weight: bold; }
+QLabel#dateLabel                    { color: #A3ABB3; font-size: 15px; padding-bottom: 5px; }
+QPushButton#chronoButton            { background: #22262B; color: #A3ABB3; border: 1px solid #2E343A; border-radius: 14px;
+                                      font-size: 15px; padding: 0 16px; min-height: 44px; }
+QPushButton#chronoButton[on="true"] { background: #1B2A3A; color: #7DB7FF; border-color: #7DB7FF; }
+QPushButton#linkButton              { background: transparent; color: #A3ABB3; font-size: 15px; font-weight: normal;
+                                      padding: 0 4px; min-height: 44px; }
+QPushButton#linkButton:pressed      { background: #22262B; }
 
-/* QFormLayout */
-QFormLayout                                 { background: transparent;  border: 0px solid #000000; }
+/* main page: cards */
+QFrame#card                         { background: #22262B; border: 1px solid #2E343A; border-radius: 14px; }
+QFrame#card[alarm="true"]           { border-color: #6E2A2C; }
+QLabel#caption                      { color: #A3ABB3; font-size: 14px; }
+QLabel#bigValue                     { font-size: 26px; font-weight: bold; }
+QLabel#bigValue[hot="true"]         { color: #F28C28; }
+QLabel#hint                         { color: #F6C27A; font-size: 14px; }
+QLabel#setValue                     { color: #7DB7FF; font-size: 30px; font-weight: bold; }
+QLabel#powerValue                   { font-size: 30px; font-weight: bold; }
+QLabel#dateValue                    { font-size: 26px; font-weight: bold; }
 
-/* QPushButton */
-QPushButton                                 { background: #a10000;  border:none; border-radius: 2px; color: white; font: 25pt; font-weight: bold; }
-QPushButton:pressed                         { background: #6E0A1E;  border:none; }
-QPushButton:checked                         { background: #3E0705;  border:none; }
-QPushButton:disabled                        { background: #666666;  border:none; }
+QFrame#stateChip                    { background: #343A41; border: 1px solid #4A525B; border-radius: 14px; min-height: 22px; }
+QFrame#stateChip QLabel#chipText    { color: #C9CED3; font-size: 18px; font-weight: bold; }
+QFrame#stateChip[look="active"]     { background: #3A2412; border-color: #F28C28; }
+QFrame#stateChip[look="active"] QLabel#chipText  { color: #F28C28; }
+QFrame#stateChip[look="alarm"]      { background: #3A1A1C; border-color: #F2555A; }
+QFrame#stateChip[look="alarm"] QLabel#chipText   { color: #F2555A; }
+QFrame#stateChip[look="warning"]    { background: #3A2A12; border-color: #F28C28; }
+QFrame#stateChip[look="warning"] QLabel#chipText { color: #F6C27A; }
 
-QDialog QPushButton                         { background: #4F0099;  border:none; border-radius: 2px; color: white; font: 10px; font-weight: bold; }
-QDialog QPushButton:pressed                 { background: #1b0033;  border:none; }
-QDialog QPushButton:checked                 { background: #3E0705;  border:none; }
-QDialog QPushButton:disabled                { background: #666666;  border:none; }
+/* buttons */
+QPushButton                         { background: #343A41; color: #F3F4F5; border: none; border-radius: 12px;
+                                      font-size: 18px; font-weight: bold; padding: 0 14px; min-height: 44px; }
+QPushButton:pressed                 { background: #4A525B; }
+QPushButton:disabled                { background: #262A2F; color: #555C63; }
+QPushButton#stepButton              { font-size: 34px; font-weight: normal; padding: 0; }
+QPushButton#onOffButton             { font-size: 20px; min-height: 64px; }
+QPushButton#onOffButton[look="on"]  { background: #4FB3A9; color: #0B1118; }
+QPushButton#onOffButton[look="on"]:pressed { background: #3E968D; }
+QPushButton#onOffButton[look="reset"] { background: #6E2A2C; color: #FFFFFF; }
+QPushButton#onOffButton[look="reset"]:pressed { background: #8A3538; }
+QPushButton#onOffButton:disabled    { background: #262A2F; color: #555C63; }
 
-/* QLabel */
-QLabel                                      { color: white;    font: 8pt;   font-weight: bold;}
-QLabel#ambTemp                              { color: white;    font: 50pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
-QLabel#ambTempDegSym                        { color: white;    font: 50pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
-QLabel#ambTempCSym                          { color: white;    font: 50pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
-QLabel#setTemp                              { color: #a6a197;  font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
-QLabel#setTempDegSym                        { color: #a6a197;  font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
-QLabel#setTempCSym                          { color: #a6a197;  font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
-QLabel#state                                { color: #d60000;  font: 20pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
+/* confirmations and messages */
+QMessageBox                         { background: #22262B; border: 1px solid #2E343A; }
+QMessageBox QLabel                  { font-size: 20px; padding: 12px; min-width: 360px; }
+QMessageBox QPushButton             { min-width: 150px; min-height: 60px; }
 
-QLabel#powerLab                             { color: #d60000;  font: 13pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
-QLabel#flameLab                             { color: #d60000;  font: 13pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
-QLabel#setPower                             { color: #d60000;  font: 15pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
-QLabel#setPowerPerc                         { color: #d60000;  font: 15pt;  font-weight: normal; font-family: "Advanced Dot Digital-7"; }
+/* chrono page */
+QPushButton#backButton              { min-height: 48px; padding: 0 18px 0 12px; font-size: 20px; }
+QLabel#pageTitle                    { font-size: 26px; font-weight: bold; }
+QLabel#switchLabel                  { font-size: 18px; font-weight: bold; }
+QPushButton#tabButton               { background: #22262B; color: #A3ABB3; border-radius: 0; border-bottom: 3px solid #2E343A;
+                                      min-height: 52px; font-size: 18px; }
+QPushButton#tabButton:checked       { background: #2A2F35; color: #F3F4F5; border-bottom: 3px solid #4FB3A9; }
+QLabel#programTitle                 { font-size: 20px; font-weight: bold; }
+QFrame#slotRow                      { background: #2A2F35; border: none; border-radius: 12px; }
+QLabel#slotName                     { font-size: 18px; font-weight: bold; }
+QPushButton#timeButton              { padding: 0; min-height: 64px; max-height: 64px; }
+QPushButton#timeButton:disabled     { background: #343A41; }
+QLabel#timeCaption                  { color: #A3ABB3; font-size: 12px; }
+QLabel#timeValue                    { font-size: 28px; font-weight: bold; }
+QLabel#timeValue[off="true"]        { color: #7D858D; }
+QPushButton#slotSelect              { font-size: 20px; padding: 0; min-height: 52px; max-height: 52px; }
+QPushButton#slotSelect:checked      { background: #1B2A3A; color: #7DB7FF; border: 1px solid #7DB7FF; }
+QPushButton#dayChip                 { background: #2A2F35; color: #7D858D; border-radius: 12px; font-size: 16px; padding: 0; }
+QPushButton#dayChip:checked         { background: #1F3B38; color: #4FB3A9; border: 1px solid #4FB3A9; }
 
-/* QLCDNumber */
-QLCDNumber                                  { background-color:rgba(0, 0, 0, 0.0); color: #D60000; border: 0px solid rgba(0, 0, 0, 0.0); border-radius: 0px; }
-QLCDNumber:disabled                         { background-color:rgba(0, 0, 0, 0.0); color: #444444; border: 0px solid rgba(0, 0, 0, 0.0); border-radius: 0px; }
+/* diagnostic page */
+QLabel#diagValue                    { font-size: 18px; font-weight: bold; }
+QLabel#diagValue[look="ok"]         { color: #4FB3A9; }
+QLabel#diagValue[look="warning"]    { color: #F6C27A; }
+QLabel#diagValue[look="error"]      { color: #F2555A; }
 
-/* QMessageBox */
-QMessageBox                                 { background-color: #333333; border: 2px solid #000000; border-radius: 2px;}
-QMessageBox QLabel                          { min-width: 400px; min-height: 180px; font-size:13pt;  background: #333333; color: #aaa; }
-QMessageBox QPushButton                     { background: #AD1625; border:none; border-radius: 2px; min-width: 100px; min-height: 60px; }
-QMessageBox QPushButton:pressed             { background: #6E0A1E; border:none; }
-
-/* QTabWidget QTabBar */
-QTabWidget::pane                            { background: #333333; border: 2px solid #000000; }
-QTabWidget QTabBar::tab                     { background: #333333; color: white; border: 1px solid #000000;  padding: 10px; }
-QTabWidget QTabBar::tab:selected            { background: #6E0A1E; border: 2px solid #000000; }
-
-/* QCheckBox */
-QCheckBox                                   { color: white; }
-
-QCheckBox::indicator                        { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
-                                                                stop:0 rgba(255, 0, 0, 255), stop:1 rgba(64, 0, 0, 255)); }
-QCheckBox::indicator:checked                { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
-                                                                stop:0 rgba(0, 255, 0, 255), stop:1 rgba(0, 64, 0, 255)); }
-QCheckBox::indicator:disabled               { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
-                                                                stop:0 rgba(127, 127, 127, 255), stop:1 rgba(64, 64, 64, 255)); }
-QCheckBox::indicator:checked:disabled       { background-color: qradialgradient(spread:pad, cx:0.5, cy:0.5, radius:0.9, fx:0.5, fy:0.5,
-                                                                stop:0 rgba(0, 255, 0, 255), stop:1 rgba(0, 64, 0, 255)); }
-/*
-QCheckBox#extendedID                        { color: white;  }
-QCheckBox::indicator#extendedID             { border: 3px solid #6E0A1E; background: none;}
-QCheckBox::indicator:checked#extendedID     { border: 8px solid #AD1625; background: none;}
-*/
+/* time picker */
+QDialog#timePicker                  { background: #22262B; border: 1px solid #4A525B; border-radius: 14px; }
+QLabel#pickerTitle                  { font-size: 20px; font-weight: bold; }
+QPushButton#pickerPart              { background: transparent; color: #A3ABB3; font-size: 64px; font-weight: bold;
+                                      padding: 0; border-radius: 12px; min-height: 88px; }
+QPushButton#pickerPart:checked      { background: #1B2A3A; color: #7DB7FF; }
+QLabel#pickerColon                  { color: #A3ABB3; font-size: 56px; font-weight: bold; }
+QPushButton#pickerSave              { background: #4FB3A9; color: #0B1118; }
+QPushButton#pickerSave:pressed      { background: #3E968D; }
+QPushButton#pickerOff               { color: #F6C27A; }

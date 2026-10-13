@@ -1,20 +1,16 @@
-# Sources of the custom widgets, shared by the static library
-# (CustomWidgets.pro) and the Qt Designer plugin (designer/designer.pro)
+# Sources of the custom widgets of the GUI, built as a static library by
+# CustomWidgets.pro
 
 INCLUDEPATH += $$PWD
 
 HEADERS += \
-    $$PWD/wClickableLabel.h \
-    $$PWD/wClickableLCDNumber.h \
-    $$PWD/wClockWidget.h \
-    $$PWD/wTimePicker.h
+    $$PWD/wClockFace.h \
+    $$PWD/wDial.h \
+    $$PWD/wPowerBars.h \
+    $$PWD/wToggle.h
 
 SOURCES += \
-    $$PWD/wClickableLabel.cpp \
-    $$PWD/wClickableLCDNumber.cpp \
-    $$PWD/wClockWidget.cpp \
-    $$PWD/wTimePicker.cpp
-
-FORMS += \
-    $$PWD/wClickableLabel.ui \
-    $$PWD/wTimePicker.ui
+    $$PWD/wClockFace.cpp \
+    $$PWD/wDial.cpp \
+    $$PWD/wPowerBars.cpp \
+    $$PWD/wToggle.cpp

@@ -2,7 +2,7 @@
 # built through the top level PelletController.pro (ThirdParty and
 # CustomWidgets first).
 
-QT       += core gui widgets
+QT       += core gui widgets svg
 CONFIG   += c++17
 CONFIG   += qtc_runnable
 TARGET    = PelletController
@@ -42,20 +42,26 @@ include($$PC_SRC/version.pri)
 RESOURCES = $$PC_SRC/resources.qrc
 
 SOURCES += \
+    $$PC_SRC/chronopage.cpp \
+    $$PC_SRC/clockdialog.cpp \
+    $$PC_SRC/diagpage.cpp \
     $$PC_SRC/main.cpp \
+    $$PC_SRC/mainpage.cpp \
     $$PC_SRC/mainwindow.cpp \
     $$PC_SRC/serialproto.cpp \
-    $$PC_SRC/timeeditdialog.cpp
+    $$PC_SRC/timepicker.cpp \
+    $$PC_SRC/uiicons.cpp
 
 HEADERS += \
+    $$PC_SRC/chronopage.h \
+    $$PC_SRC/clockdialog.h \
+    $$PC_SRC/diagpage.h \
     $$PC_SRC/common.h \
+    $$PC_SRC/mainpage.h \
     $$PC_SRC/mainwindow.h \
     $$PC_SRC/serialproto.h \
-    $$PC_SRC/timeeditdialog.h
-
-FORMS += \
-    $$PC_SRC/mainwindow.ui \
-    $$PC_SRC/timeeditdialog.ui
+    $$PC_SRC/timepicker.h \
+    $$PC_SRC/uiicons.h
 
 DESTDIR = $$PC_BUILD/bin_$${QT_ARCH}
 

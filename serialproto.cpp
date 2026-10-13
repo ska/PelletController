@@ -9,8 +9,8 @@ SerialProto::SerialProto(QObject *parent)
     m_loopEnabled = false;
     m_linkState = LinkOk;
     m_state = m_previousState = m_nextState = 0;
-    m_stoveState = m_smokeTemp = m_flamePower = m_setPower = m_smokeFanSpeed = 0;
-    m_ambTempDC = m_setTempDC = 0;
+    m_stoveState = m_flamePower = m_setPower = 0;
+    m_smokeFanRpm = 0;
     m_setTempRaw = 0;
     m_setTempRead = m_setPowerRead = false;
     m_txMessages = m_rxMessages = m_rxErrors = m_rxChecksumErrors = m_rxTimeouts = 0;
@@ -18,25 +18,9 @@ SerialProto::SerialProto(QObject *parent)
     m_writeAttempts = 0;
     m_writeCurrent = {};
     m_readRetryPending = m_readRetried = false;
-    m_ambTemp = m_setTemp = m_tonCochlea = 0.0;
     m_stoveYear = m_stoveMonth = m_stoveDay = m_stoveDoW = m_stoveHour = m_stoveMinutes = m_stoveSeconds = 0;
     m_chronoSerialGet = false;
     m_writeInFlight = false;
-#if 0
-    foreach (const QSerialPortInfo &info, QSerialPortInfo::availablePorts())
-    {
-        qDebug() << "Name : " << info.portName();
-        qDebug() << "Description : " << info.description();
-        qDebug() << "Manufacturer: " << info.manufacturer();
-#if 0
-        serialPortStruct *tmpSerStruct = new serialPortStruct;
-        tmpSerStruct->m_descr = info.portName() + " - " + info.description();
-        tmpSerStruct->m_value = info.portName();
-        m_serialPortStructs << tmpSerStruct;
-#endif
-    }
-    //qDebug() << "m_serialPortStructs.length():" << m_serialPortStructs.length();
-#endif
     m_rxIdleTimer.setSingleShot(true);
     m_writeTimer.setSingleShot(true);
     m_reopenTimer.setSingleShot(true);
@@ -47,7 +31,7 @@ SerialProto::SerialProto(QObject *parent)
     connect(&m_serial, &QSerialPort::errorOccurred, this, &SerialProto::onSerialError);
     connect(&m_reopenTimer, &QTimer::timeout, this, &SerialProto::openSerPort);
     connect(&m_noReplyTimer, &QTimer::timeout, this, [this]{ setLinkState(LinkNoReply); });
-    connect(&m_loopTimer, SIGNAL(timeout()), this, SLOT(getStoveInfos()));
+    connect(&m_loopTimer, &QTimer::timeout, this, &SerialProto::getStoveInfos);
     connect(&m_rxIdleTimer, &QTimer::timeout, this, &SerialProto::processStoveReply);
     connect(&m_writeTimer, &QTimer::timeout, this, &SerialProto::sendPendingWrite);
 }
@@ -67,22 +51,6 @@ SerialProto *SerialProto::getInstance()
     return instance;
 }
 
-#if 0
-QObject* SerialProto::createSingletonInstance(QQmlEngine *engine, QJSEngine *scriptEngine){
-    Q_UNUSED(engine);
-    Q_UNUSED(scriptEngine);
-    if(instance==nullptr)
-    {
-        instance = new SerialProto;
-    }
-    return instance;
-}
-QList<serialPortStruct *> SerialProto::serialPortStructs()
-{
-    return m_serialPortStructs;
-}
-
-#endif
 
 void SerialProto::setSerPort(const QString &serPortName)
 {
@@ -292,7 +260,6 @@ void SerialProto::processStoveReply()
         quint8 val = stoveRxData[1];
         quint8 checksum = stoveRxData[0];
         quint8 param = checksum - val - requestsMap[m_previousState].page;
-        quint8 bank = requestsMap[m_previousState].page;
         if(param != requestsMap[m_previousState].address)
         {
             qWarning() << "Invalid response or checksum";
@@ -309,246 +276,7 @@ void SerialProto::processStoveReply()
         m_noReplyTimer.start(SERIAL_NO_REPLY_TIMEOUT);
         setLinkState(LinkOk);
 
-        quint16 bank_param = (((quint16)bank << 8) | param);
-        switch (bank_param)
-        {
-            case ramParam(ambTempAddr ):
-                m_ambTemp = (float)val / 2;
-                m_ambTempDC = (((quint16)val)*10)/2;
-                emit updateAmbTemp(m_ambTemp);
-                break;
-
-            case ramParam(cochleaTurnsAddr ):
-                m_tonCochlea = (float)val / 10;
-                //qDebug() << "Resp: cochleaTurnsAddr: " << m_tonCochlea;
-                break;
-
-            case ramParam(stoveStateAddr ):
-                if(val != m_stoveState)
-                    qInfo() << "Stove state:" << m_stoveState << "->" << val;
-                m_stoveState = val;
-                //Stato fuori tabella (scheda stufa piu' recente o risposta rumorosa): niente at() fuori range
-                emit updateStoveState(m_stoveState, (m_stoveState < m_stoveStateStr.size())
-                                                        ? m_stoveStateStr.at(m_stoveState)
-                                                        : QString("Unknown (%1)").arg(m_stoveState));
-                break;
-
-            case ramParam(flamePowerAddr ):
-                //From 0-16 to 10-100%, 0 when Off or from Final Cleaning on (issue 11)
-                if (m_stoveState > Off && m_stoveState < FinalCleaning)
-                    m_flamePower = (((quint16)val*90)/16)+10;
-                else
-                    m_flamePower = 0;
-                //qDebug() << "Resp: flamePowerAddr: " << m_flamePower;
-                break;
-
-            case ramParam(smokeFanSpeedAddr ):
-                m_smokeFanSpeed = (val*10)+250;
-                //qDebug() << "Resp: smokeFanSpeedAddr: " << m_smokeFanSpeed;
-                break;
-
-            case ramParam(smokeTempAddr ):
-                //corretta
-                m_smokeTemp = val;
-                //qDebug() << "Resp: smokeTempAddr: " << m_smokeTemp;
-                break;
-
-            case ramParam(secondsCurrentAddr ):
-                m_stoveSeconds = val;
-                break;
-            case ramParam(dayOfWeekAddr ):
-                m_stoveDoW = val;
-                break;
-            case ramParam(hoursCurrentAddr ):
-                m_stoveHour = val;
-                break;
-            case ramParam(minutesCurrentAddr ):
-                m_stoveMinutes = val;
-                break;
-            case ramParam(dayOfMonthCurrentAddr ):
-                m_stoveDay = val;
-                break;
-            case ramParam(monthCurrentAddr ):
-                m_stoveMonth = val;
-                break;
-            case ramParam(yearCurrentAddr ):
-                m_stoveYear = val;
-                break;
-            case eepromParam(tempSetAddr ):
-                m_setTemp = (float)val / 2;
-                m_setTempDC = (((quint16)val)*10)/2;
-                m_setTempRaw = val;
-                m_setTempRead = true;
-                emit updateSetTemp(m_setTemp);
-                break;
-            case eepromParam(powerSetAddr ):
-                m_setPower = val;
-                m_setPowerRead = true;
-                //qDebug() << "Resp: powerSetAddr: " << m_setPower;
-                emit updatePower(m_setPower, m_flamePower);
-                break;
-                /*********/
-            case eepromParam(chronoEnableAddr ):
-                //qDebug() << "Resp: chronoEnableAddr: " << val;
-                emit updateChronoEnable((bool)val);
-                break;
-                /*********/
-            case eepromParam( chronoWkE_EnableAddr ):
-                emit updateChronoWkEEnable((bool)val);
-                break;
-            case eepromParam( chronoWkE_1_OnAddr ):
-                emit updateChronoWkE1On((quint8)val);
-                break;
-            case eepromParam( chronoWkE_1_OffAddr ):
-                emit updateChronoWkE1Off((quint8)val);
-                break;
-            case eepromParam( chronoWkE_2_OnAddr ):
-                emit updateChronoWkE2On((quint8)val);
-                break;
-            case eepromParam( chronoWkE_2_OffAddr ):
-                emit updateChronoWkE2Off((quint8)val);
-                break;
-#if 0
-                /*********/
-            case eepromParam( chronoDay_EnableAddr ):
-                qDebug() << "Resp: chronoDay_EnableAddr: " << val;
-                emit updateChronoDayEnable((bool)val);
-                break;
-            case eepromParam( chronoDay_1_OnAddr ):
-                qDebug() << "Resp: chronoDay_1_OnAddr: " << val;
-                emit updateChronoDay1On((quint8)val);
-                break;
-            case eepromParam( chronoDay_1_OffAddr ):
-                qDebug() << "Resp: chronoDay_1_OffAddr: " << val;
-                emit updateChronoDay1Off((quint8)val);
-                break;
-            case eepromParam( chronoDay_2_OnAddr ):
-                qDebug() << "Resp: chronoDay_2_OnAddr: " << val;
-                emit updateChronoDay2On((quint8)val);
-                break;
-            case eepromParam( chronoDay_2_OffAddr ):
-                qDebug() << "Resp: chronoDay_2_OffAddr: " << val;
-                emit updateChronoDay2Off((quint8)val);
-                break;
-
-
-            case eepromParam(chronoSet_EnableAddr ):
-                qDebug() << "Resp: chronoSet_EnableAddr: " << val;
-                break;
-            case eepromParam(chronoSet_1_OnAddr ):
-                qDebug() << "Resp: chronoSet_1_OnAddr: " << val;
-                break;
-            case eepromParam( chronoSet_1_OffAddr ):
-                qDebug() << "Resp: chronoSet_1_OffAddr: " << val;
-                break;
-            case eepromParam( chronoSet_1_LunEnabAddr ):
-                qDebug() << "Resp: chronoSet_1_LunEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_1_MarEnabAddr ):
-                qDebug() << "Resp: chronoSet_1_MarEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_1_MerEnabAddr ):
-                qDebug() << "Resp: chronoSet_1_MerEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_1_GioEnabAddr ):
-                qDebug() << "Resp: chronoSet_1_GioEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_1_VenEnabAddr ):
-                qDebug() << "Resp: chronoSet_1_VenEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_1_SabEnabAddr ):
-                qDebug() << "Resp: chronoSet_1_SabEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_1_DomEnabAddr ):
-                qDebug() << "Resp: chronoSet_1_DomEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_2_OnAddr ):
-                qDebug() << "Resp: chronoSet_2_OnAddr: " << val;
-                break;
-            case eepromParam( chronoSet_2_OffAddr ):
-                qDebug() << "Resp: chronoSet_2_OffAddr: " << val;
-                break;
-            case eepromParam( chronoSet_2_LunEnabAddr ):
-                qDebug() << "Resp: chronoSet_2_LunEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_2_MarEnabAddr ):
-                qDebug() << "Resp: chronoSet_2_MarEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_2_MerEnabAddr ):
-                qDebug() << "Resp: chronoSet_2_MerEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_2_GioEnabAddr ):
-                qDebug() << "Resp: chronoSet_2_GioEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_2_VenEnabAddr ):
-                qDebug() << "Resp: chronoSet_2_VenEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_2_SabEnabAddr ):
-                qDebug() << "Resp: chronoSet_2_SabEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_2_DomEnabAddr ):
-                qDebug() << "Resp: chronoSet_2_DomEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_3_OnAddr ):
-                qDebug() << "Resp: chronoSet_3_OnAddr: " << val;
-                break;
-            case eepromParam( chronoSet_3_OffAddr ):
-                qDebug() << "Resp: chronoSet_3_OffAddr: " << val;
-                break;
-            case eepromParam( chronoSet_3_LunEnabAddr ):
-                qDebug() << "Resp: chronoSet_3_LunEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_3_MarEnabAddr ):
-                qDebug() << "Resp: chronoSet_3_MarEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_3_MerEnabAddr ):
-                qDebug() << "Resp: chronoSet_3_MerEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_3_GioEnabAddr ):
-                qDebug() << "Resp: chronoSet_3_GioEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_3_VenEnabAddr ):
-                qDebug() << "Resp: chronoSet_3_VenEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_3_SabEnabAddr ):
-                qDebug() << "Resp: chronoSet_3_SabEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_3_DomEnabAddr ):
-                qDebug() << "Resp: chronoSet_3_DomEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_4_OnAddr ):
-                qDebug() << "Resp: chronoSet_4_OnAddr: " << val;
-                break;
-            case eepromParam( chronoSet_4_OffAddr ):
-                qDebug() << "Resp: chronoSet_4_OffAddr: " << val;
-                break;
-            case eepromParam( chronoSet_4_LunEnabAddr ):
-                qDebug() << "Resp: chronoSet_4_LunEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_4_MarEnabAddr ):
-                qDebug() << "Resp: chronoSet_4_MarEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_4_MerEnabAddr ):
-                qDebug() << "Resp: chronoSet_4_MerEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_4_GioEnabAddr ):
-                qDebug() << "Resp: chronoSet_4_GioEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_4_VenEnabAddr ):
-                qDebug() << "Resp: chronoSet_4_VenEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_4_SabEnabAddr ):
-                qDebug() << "Resp: chronoSet_4_SabEnabAddr: " << val;
-                break;
-            case eepromParam( chronoSet_4_DomEnabAddr ):
-                qDebug() << "Resp: chronoSet_4_DomEnabAddr: " << val;
-                break;
-#endif
-
-            default:
-                //Valid reply to a parameter not used by the panel: still counted in Rx (issue 27)
-                break;
-        }
+        storeValue(RequestsIndex(m_previousState), val);
     } else {
         //Lunghezza sbagliata o eco diversa dalla richiesta (solo eco = stufa muta)
         qWarning() << "Invalid reply:" << stoveRxData.toHex(' ') << "to" << m_readSent.toHex(' ');
@@ -556,6 +284,71 @@ void SerialProto::processStoveReply()
         m_readRetryPending = !m_readRetried;
     }
     emit updateStats(m_txMessages, m_rxMessages, m_rxErrors, m_rxChecksumErrors, m_rxTimeouts);
+}
+
+/* A valid value read (or confirmed by a write): kept and emitted. Every
+ * parameter counts in Rx, also the ones the panel does not use (issue 27) */
+void SerialProto::storeValue(RequestsIndex index, quint8 val)
+{
+    switch (index)
+    {
+    case ambTempIndex:
+        emit updateAmbTemp(val / 2.0f);
+        break;
+    case stoveStateIndex:
+        if(val != m_stoveState)
+            qInfo() << "Stove state:" << m_stoveState << "->" << val;
+        m_stoveState = val;
+        //Stato fuori tabella (scheda stufa piu' recente o risposta rumorosa): niente at() fuori range
+        emit updateStoveState(m_stoveState, (m_stoveState < m_stoveStateStr.size())
+                                                ? m_stoveStateStr.at(m_stoveState)
+                                                : QString("Unknown (%1)").arg(m_stoveState));
+        break;
+    case flamePowerIndex:
+        //From 0-16 to 10-100%, 0 when Off or from Final Cleaning on (issue 11)
+        if (m_stoveState > Off && m_stoveState < FinalCleaning)
+            m_flamePower = (((quint16)val*90)/16)+10;
+        else
+            m_flamePower = 0;
+        //Shown at once, not only with the set power later in the round
+        if(m_setPowerRead)
+            emit updatePower(m_setPower, m_flamePower);
+        break;
+    case smokeFanSpeedIndex:
+        m_smokeFanRpm = val ? (quint16(val)*10)+250 : 0;
+        break;
+    case smokeTempIndex:
+        emit updateSmoke(val, m_smokeFanRpm);
+        break;
+    case powerInUseIndex:
+        emit updatePowerInUse(val);
+        break;
+    case secondsCurrentIndex:       m_stoveSeconds = val;   break;
+    case dayOfWeekIndex:            m_stoveDoW = val;       break;
+    case hoursCurrentIndex:         m_stoveHour = val;      break;
+    case minutesCurrentIndex:       m_stoveMinutes = val;   break;
+    case dayOfMonthCurrentIndex:    m_stoveDay = val;       break;
+    case monthCurrentIndex:         m_stoveMonth = val;     break;
+    case yearCurrentIndex:          m_stoveYear = val;      break;
+    case tempSetIndex:
+        m_setTempRaw = val;
+        m_setTempRead = true;
+        emit updateSetTemp(val / 2.0f);
+        break;
+    case powerSetIndex:
+        m_setPower = val;
+        m_setPowerRead = true;
+        emit updatePower(m_setPower, m_flamePower);
+        break;
+    default:
+        if(index >= chronoEnableIndex && index <= chronoSet_4_DomEnabIndex)
+        {
+            emit chronoRead(index, val);
+            if(index == chronoEnableIndex)
+                emit updateChronoEnable(val);
+        }
+        break;
+    }
 }
 
 void SerialProto::getStoveInfos()
@@ -604,7 +397,12 @@ void SerialProto::getStoveInfos()
 
             /*
              * */
-            emit updateStoveDateTime(QDateTime( QDate(2000+m_stoveYear, m_stoveMonth, m_stoveDay), QTime(m_stoveHour, m_stoveMinutes, m_stoveSeconds) ));
+            /* The board takes a new time at once, but the RAM clock copy
+             * keeps the old one for a minute or two (checked on the stove) */
+            QDateTime stove(QDate(2000+m_stoveYear, m_stoveMonth, m_stoveDay), QTime(m_stoveHour, m_stoveMinutes, m_stoveSeconds));
+            if(m_clockSet.isValid() && m_clockSetAge.isValid() && m_clockSetAge.elapsed() < CLOCK_SET_HOLD_MS)
+                stove = m_clockSet.addMSecs(m_clockSetAge.elapsed());
+            emit updateStoveDateTime(stove);
             m_loopTimer.start(SERIAL_SESSION_DELAY);
         }
     } else {
@@ -627,7 +425,7 @@ void SerialProto::getStoveInfos()
         m_nextState       = m_state+1;
         m_state = m_nextState;
 
-        if(m_state >= LastIndex)
+        if(m_state > chronoSet_4_DomEnabIndex)
         {
             m_state = 0;
             m_loopTimer.stop();
@@ -771,22 +569,40 @@ void SerialProto::writeStoveIncSetPoint()
     writeStoveCmd(tempSetIndex, qMax(m_setTempRaw+1, SETPOINT_MIN_RAW));
 }
 
-void SerialProto::writeChronoEnable(bool val)
+/* Stove clock: written to EEPROM F8-FD in BCD (0x13 = 13), day of week 1 =
+ * Monday, year - 2000; the board shows it in the RAM clock (65-6B) */
+bool SerialProto::writeClock(const QDateTime &dt)
 {
-    writeStoveCmd(chronoEnableIndex, val);
+    if(!dt.isValid() || dt.date().year() < 2000 || dt.date().year() > 2099)
+        return false;
+    auto bcd = [](int v) { return quint8(((v / 10) << 4) | (v % 10)); };
+    const QDate d = dt.date();
+    const QTime t = dt.time();
+    qInfo() << "Stove clock set to" << dt.toString("yyyy-MM-dd HH:mm");
+    m_clockSet = QDateTime(d, QTime(t.hour(), t.minute()));
+    m_clockSetAge.start();
+    emit updateStoveDateTime(m_clockSet);
+    writeStoveCmd(clockSet_DoWIndex, bcd(d.dayOfWeek()));
+    writeStoveCmd(clockSet_HourIndex, bcd(t.hour()));
+    writeStoveCmd(clockSet_MinuteIndex, bcd(t.minute()));
+    writeStoveCmd(clockSet_DayIndex, bcd(d.day()));
+    writeStoveCmd(clockSet_MonthIndex, bcd(d.month()));
+    writeStoveCmd(clockSet_YearIndex, bcd(d.year() - 2000));
+    return true;
 }
 
-void SerialProto::writeChronoWkeEnable(bool val)
+/* Any chrono parameter: on/off and day flags 0/1, times 0-143 (tens of
+ * minutes from 00:00) or 144 = slot off. Anything else is refused. */
+bool SerialProto::writeChrono(RequestsIndex index, quint8 value)
 {
-    writeStoveCmd(chronoWkE_EnableIndex, val);
-}
-
-void SerialProto::writeChronoWke1On(quint8 val)
-{
-    writeStoveCmd(chronoWkE_1_OnIndex, val);
-}
-
-void SerialProto::writeChronoWke1Off(quint8 val)
-{
-    writeStoveCmd(chronoWkE_1_OffIndex, val);
+    if(index < chronoEnableIndex || index > chronoSet_4_DomEnabIndex)
+        return false;
+    const bool time = requestsMap[index].scale == 10;
+    if(value > (time ? 144 : 1))
+    {
+        qWarning() << "Chrono write refused:" << requestsMap[index].description << value;
+        return false;
+    }
+    writeStoveCmd(index, value);
+    return true;
 }

@@ -6,9 +6,7 @@
 #include <QQueue>
 #include <QObject>
 #include <QDateTime>
-//#include <QJSEngine>
-//#include <QQmlEngine>
-#include <QStandardItemModel>
+#include <QElapsedTimer>
 
 #include <QtSerialPort/qserialport.h>
 #include <QtSerialPort/qserialportinfo.h>
@@ -22,6 +20,7 @@
 #define SERIAL_REOPEN_DELAY     (SERIAL_MESSAGE_DELAY*15)   //Port not open or lost: open it again after 3 s
 #define SERIAL_NO_REPLY_TIMEOUT (SERIAL_MESSAGE_DELAY*50)   //No valid reply for 10 s: stove not answering
 #define SERIAL_PORT_DEFAULT     "/dev/ttyUSB0"
+#define CLOCK_SET_HOLD_MS       (120*1000)                  //After a clock set the RAM clock lags: show the time written
 
 /* Setpoint -/+ range, in half degrees (5.0 - 30.0 C), and power range */
 #define SETPOINT_MIN_RAW        (5*2)
@@ -29,8 +28,6 @@
 #define POWER_MIN               (1)
 #define POWER_MAX               (5)
 
-#define ramParam(param)         (((quint16)ramBank << 8) | param)
-#define eepromParam(param)      (((quint16)eepromBank << 8) | param)
 #define requestsMapSize         (sizeof(requestsMap)/sizeof(requestsMap[0]))
 /* Stove Definitions */
 #define readCmd                 0x00
@@ -46,6 +43,7 @@
 #define flamePowerAddr          0x34
 #define smokeFanSpeedAddr       0x37
 #define smokeTempAddr           0x5A
+#define powerInUseAddr          0x19
 
 #define secondsCurrentAddr      0x65
 #define dayOfWeekAddr           0x66
@@ -110,24 +108,17 @@
 #define chronoSet_4_VenEnabAddr     0x72
 #define chronoSet_4_SabEnabAddr     0x73
 #define chronoSet_4_DomEnabAddr     0x74
-#if 0
-struct serialPortStruct: public QStandardItemModel
-{
-    Q_OBJECT
-    Q_PROPERTY(QString descr MEMBER m_descr);
-    Q_PROPERTY(QString value MEMBER m_value);
 
-public:
-    QString m_descr;
-    QString m_value;
-};
-Q_DECLARE_METATYPE(serialPortStruct)
-#endif
+/* Clock to set (EEPROM, BCD, not polled): the RAM clock above is read only */
+#define clockSet_DoWAddr            0xF8
+#define clockSet_HourAddr           0xF9
+#define clockSet_MinuteAddr         0xFA
+#define clockSet_DayAddr            0xFB
+#define clockSet_MonthAddr          0xFC
+#define clockSet_YearAddr           0xFD
 class SerialProto : public QObject
 {
     Q_OBJECT
-    //Q_PROPERTY(QList<serialPortStruct *> serialPortStructs READ serialPortStructs NOTIFY serialPortStructsChanged);
-    //Q_PROPERTY(QString serPort                             WRITE setSerPort)
 
 public:
 
@@ -175,6 +166,7 @@ public:
         flamePowerIndex,
         smokeFanSpeedIndex,
         smokeTempIndex,
+        powerInUseIndex,
         secondsCurrentIndex,
         dayOfWeekIndex,
         hoursCurrentIndex,
@@ -240,6 +232,13 @@ public:
         chronoSet_4_VenEnabIndex,
         chronoSet_4_SabEnabIndex,
         chronoSet_4_DomEnabIndex,
+        /*********/
+        clockSet_DoWIndex,                  //Written only (writeClock), never polled
+        clockSet_HourIndex,
+        clockSet_MinuteIndex,
+        clockSet_DayIndex,
+        clockSet_MonthIndex,
+        clockSet_YearIndex,
 
         LastIndex
     };
@@ -252,86 +251,94 @@ public:
         uint8_t offset;
         float scale;
     } requestsMap[LastIndex] = {
+        /* 00 */ramBank,    ambTempAddr,                "Room temperature",                   0,  2.0,
+        /* 01 */ramBank,    cochleaTurnsAddr,           "Auger on time",                      0,  0.1,
+        /* 02 */ramBank,    stoveStateAddr,             "Stove state",                        0,  1,
+        /* 03 */ramBank,    flamePowerAddr,             "Flame power",                        0,  1,
+        /* 04 */ramBank,    smokeFanSpeedAddr,          "Smoke fan speed",                  250,  10,
+        /* 05 */ramBank,    smokeTempAddr,              "Smoke temperature",                  0,  1,
+        /* 06 */ramBank,    powerInUseAddr,             "Power in use",                       0,  1,
+        /* 07 */ramBank,    secondsCurrentAddr,         "Clock seconds",                      0,  1,
+        /* 08 */ramBank,    dayOfWeekAddr,              "Clock day of week",                  0,  1,
+        /* 09 */ramBank,    hoursCurrentAddr,           "Clock hours",                        0,  1,
+        /* 10 */ramBank,    minutesCurrentAddr,         "Clock minutes",                      0,  1,
+        /* 11 */ramBank,    dayOfMonthCurrentAddr,      "Clock day",                          0,  1,
+        /* 12 */ramBank,    monthCurrentAddr,           "Clock month",                        0,  1,
+        /* 13 */ramBank,    yearCurrentAddr,            "Clock year",                         0,  1,
         /*********/
-        /* 00 */ramBank,    ambTempAddr,                "Temp. ambiente",                   0,  2.0,
-        /* 01 */ramBank,    cochleaTurnsAddr,           "Ton di ON coclea",                 0,  0.1,
-        /* 02 */ramBank,    stoveStateAddr,             "Stato funzionamento",              0,  1,
-        /* 03 */ramBank,    flamePowerAddr,             "Potenza fiamma",                   0,  1,
-        /* 04 */ramBank,    smokeFanSpeedAddr,          "Giri ventola fumi",              250,  10,
-        /* 05 */ramBank,    smokeTempAddr,              "Temperatura fumi",                 0,  1,
-        /* 06 */ramBank,    secondsCurrentAddr,         "Secondi attuali",                  0,  1,
-        /* 07 */ramBank,    dayOfWeekAddr,              "Giorno settimana",                 0,  1,
-        /* 08 */ramBank,    hoursCurrentAddr,           "Ora attuale",                      0,  1,
-        /* 09 */ramBank,    minutesCurrentAddr,         "Minuti attuali",                   0,  1,
-        /* 10 */ramBank,    dayOfMonthCurrentAddr,      "Giorno",                           0,  1,
-        /* 11 */ramBank,    monthCurrentAddr,           "Mese",                             0,  1,
-        /* 12 */ramBank,    yearCurrentAddr,            "Anno",                             0,  1,
+        /* 14 */eepromBank, tempSetAddr,                "Setpoint",                           0,  2.0,
+        /* 15 */eepromBank, powerSetAddr,               "Power",                              0,  1,
         /*********/
-        /* 13 */eepromBank, tempSetAddr,                "Temp SetPoint",                    0,  2.0,
-        /* 14 */eepromBank, powerSetAddr,               "Potenza impostata",                0,  1,
+        /* 16 */eepromBank, chronoEnableAddr,           "Chrono on/off",                      0,  1,
         /*********/
-        /* 15 */eepromBank, chronoEnableAddr,           "Crono abilitato",                  0,  1,
+        /* 17 */eepromBank, chronoWkE_EnableAddr,       "Weekend on/off",                     0,  1,
+        /* 18 */eepromBank, chronoWkE_1_OnAddr,         "Weekend 1 start",                    0,  10,
+        /* 19 */eepromBank, chronoWkE_1_OffAddr,        "Weekend 1 stop",                     0,  10,
+        /* 20 */eepromBank, chronoWkE_2_OnAddr,         "Weekend 2 start",                    0,  10,
+        /* 21 */eepromBank, chronoWkE_2_OffAddr,        "Weekend 2 stop",                     0,  10,
         /*********/
-        /* 16 */eepromBank, chronoWkE_EnableAddr,       "Crono WeekEnd. abilitato",         0,  1,
-        /* 17 */eepromBank, chronoWkE_1_OnAddr,         "Crono WeekEnd. 1 ON Time",         0,  10,
-        /* 18 */eepromBank, chronoWkE_1_OffAddr,        "Crono WeekEnd. 1 ON Time",         0,  10,
-        /* 19 */eepromBank, chronoWkE_2_OnAddr,         "Crono WeekEnd. 2 OFF Time",        0,  10,
-        /* 20 */eepromBank, chronoWkE_2_OffAddr,        "Crono WeekEnd. 2 OFF Time",        0,  10,
+        /* 22 */eepromBank, chronoDay_EnableAddr,       "Daily on/off",                       0,  1,
+        /* 23 */eepromBank, chronoDay_1_OnAddr,         "Daily 1 start",                      0,  10,
+        /* 24 */eepromBank, chronoDay_1_OffAddr,        "Daily 1 stop",                       0,  10,
+        /* 25 */eepromBank, chronoDay_2_OnAddr,         "Daily 2 start",                      0,  10,
+        /* 26 */eepromBank, chronoDay_2_OffAddr,        "Daily 2 stop",                       0,  10,
         /*********/
-        /* 21 */eepromBank, chronoDay_EnableAddr,       "Crono Gior. abilitato",            0,  1,
-        /* 22 */eepromBank, chronoDay_1_OnAddr,         "Crono Gior. 1 ON Time",            0,  10,
-        /* 23 */eepromBank, chronoDay_1_OffAddr,        "Crono Gior. 1 ON Time",            0,  10,
-        /* 24 */eepromBank, chronoDay_2_OnAddr,         "Crono Gior. 2 OFF Time",           0,  10,
-        /* 25 */eepromBank, chronoDay_2_OffAddr,        "Crono Gior. 2 OFF Time",           0,  10,
+        /* 27 */eepromBank, chronoSet_EnableAddr,       "Weekly on/off",                      0,  1,
         /*********/
-        /* 26 */eepromBank, chronoSet_EnableAddr,       "Crono Sett. abilitato",            0,  1,
-        /* 27 */eepromBank, chronoSet_1_OnAddr,         "Crono Sett. 1 ON Time",            0,  10,
-        /* 28 */eepromBank, chronoSet_1_OffAddr,        "Crono Sett. 1 OFF Time",           0,  10,
-        /* 29 */eepromBank, chronoSet_1_LunEnabAddr,    "Crono Sett. 1 Lun abilitato",      0,  1,
-        /* 30 */eepromBank, chronoSet_1_MarEnabAddr,    "Crono Sett. 1 Mar abilitato",      0,  1,
-        /* 31 */eepromBank, chronoSet_1_MerEnabAddr,    "Crono Sett. 1 Mer abilitato",      0,  1,
-        /* 32 */eepromBank, chronoSet_1_GioEnabAddr,    "Crono Sett. 1 Gio abilitato",      0,  1,
-        /* 33 */eepromBank, chronoSet_1_VenEnabAddr,    "Crono Sett. 1 Ven abilitato",      0,  1,
-        /* 34 */eepromBank, chronoSet_1_SabEnabAddr,    "Crono Sett. 1 Sab abilitato",      0,  1,
-        /* 35 */eepromBank, chronoSet_1_DomEnabAddr,    "Crono Sett. 1 Dom abilitato",      0,  1,
+        /* 28 */eepromBank, chronoSet_1_OnAddr,         "Weekly 1 start",                     0,  10,
+        /* 29 */eepromBank, chronoSet_1_OffAddr,        "Weekly 1 stop",                      0,  10,
+        /* 30 */eepromBank, chronoSet_1_LunEnabAddr,    "Weekly 1 Monday",                    0,  1,
+        /* 31 */eepromBank, chronoSet_1_MarEnabAddr,    "Weekly 1 Tuesday",                   0,  1,
+        /* 32 */eepromBank, chronoSet_1_MerEnabAddr,    "Weekly 1 Wednesday",                 0,  1,
+        /* 33 */eepromBank, chronoSet_1_GioEnabAddr,    "Weekly 1 Thursday",                  0,  1,
+        /* 34 */eepromBank, chronoSet_1_VenEnabAddr,    "Weekly 1 Friday",                    0,  1,
+        /* 35 */eepromBank, chronoSet_1_SabEnabAddr,    "Weekly 1 Saturday",                  0,  1,
+        /* 36 */eepromBank, chronoSet_1_DomEnabAddr,    "Weekly 1 Sunday",                    0,  1,
         /*********/
-        /* 36 */eepromBank, chronoSet_2_OnAddr,         "Crono Sett. 2 ON Time",            0,  10,
-        /* 37 */eepromBank, chronoSet_2_OffAddr,        "Crono Sett. 2 OFF Time",           0,  10,
-        /* 38 */eepromBank, chronoSet_2_LunEnabAddr,    "Crono Sett. 2 Lun abilitato",      0,  1,
-        /* 39 */eepromBank, chronoSet_2_MarEnabAddr,    "Crono Sett. 2 Mar abilitato",      0,  1,
-        /* 40 */eepromBank, chronoSet_2_MerEnabAddr,    "Crono Sett. 2 Mer abilitato",      0,  1,
-        /* 41 */eepromBank, chronoSet_2_GioEnabAddr,    "Crono Sett. 2 Gio abilitato",      0,  1,
-        /* 42 */eepromBank, chronoSet_2_VenEnabAddr,    "Crono Sett. 2 Ven abilitato",      0,  1,
-        /* 43 */eepromBank, chronoSet_2_SabEnabAddr,    "Crono Sett. 2 Sab abilitato",      0,  1,
-        /* 44 */eepromBank, chronoSet_2_DomEnabAddr,    "Crono Sett. 2 Dom abilitato",      0,  1,
+        /* 37 */eepromBank, chronoSet_2_OnAddr,         "Weekly 2 start",                     0,  10,
+        /* 38 */eepromBank, chronoSet_2_OffAddr,        "Weekly 2 stop",                      0,  10,
+        /* 39 */eepromBank, chronoSet_2_LunEnabAddr,    "Weekly 2 Monday",                    0,  1,
+        /* 40 */eepromBank, chronoSet_2_MarEnabAddr,    "Weekly 2 Tuesday",                   0,  1,
+        /* 41 */eepromBank, chronoSet_2_MerEnabAddr,    "Weekly 2 Wednesday",                 0,  1,
+        /* 42 */eepromBank, chronoSet_2_GioEnabAddr,    "Weekly 2 Thursday",                  0,  1,
+        /* 43 */eepromBank, chronoSet_2_VenEnabAddr,    "Weekly 2 Friday",                    0,  1,
+        /* 44 */eepromBank, chronoSet_2_SabEnabAddr,    "Weekly 2 Saturday",                  0,  1,
+        /* 45 */eepromBank, chronoSet_2_DomEnabAddr,    "Weekly 2 Sunday",                    0,  1,
         /*********/
-        /* 45 */eepromBank, chronoSet_3_OnAddr,         "Crono Sett. 3 ON Time",            0,  10,
-        /* 46 */eepromBank, chronoSet_3_OffAddr,        "Crono Sett. 3 OFF Time",           0,  10,
-        /* 47 */eepromBank, chronoSet_3_LunEnabAddr,    "Crono Sett. 3 Lun abilitato",      0,  1,
-        /* 48 */eepromBank, chronoSet_3_MarEnabAddr,    "Crono Sett. 3 Mar abilitato",      0,  1,
-        /* 49 */eepromBank, chronoSet_3_MerEnabAddr,    "Crono Sett. 3 Mer abilitato",      0,  1,
-        /* 50 */eepromBank, chronoSet_3_GioEnabAddr,    "Crono Sett. 3 Gio abilitato",      0,  1,
-        /* 51 */eepromBank, chronoSet_3_VenEnabAddr,    "Crono Sett. 3 Ven abilitato",      0,  1,
-        /* 52 */eepromBank, chronoSet_3_SabEnabAddr,    "Crono Sett. 3 Sab abilitato",      0,  1,
-        /* 53 */eepromBank, chronoSet_3_DomEnabAddr,    "Crono Sett. 3 Dom abilitato",      0,  1,
+        /* 46 */eepromBank, chronoSet_3_OnAddr,         "Weekly 3 start",                     0,  10,
+        /* 47 */eepromBank, chronoSet_3_OffAddr,        "Weekly 3 stop",                      0,  10,
+        /* 48 */eepromBank, chronoSet_3_LunEnabAddr,    "Weekly 3 Monday",                    0,  1,
+        /* 49 */eepromBank, chronoSet_3_MarEnabAddr,    "Weekly 3 Tuesday",                   0,  1,
+        /* 50 */eepromBank, chronoSet_3_MerEnabAddr,    "Weekly 3 Wednesday",                 0,  1,
+        /* 51 */eepromBank, chronoSet_3_GioEnabAddr,    "Weekly 3 Thursday",                  0,  1,
+        /* 52 */eepromBank, chronoSet_3_VenEnabAddr,    "Weekly 3 Friday",                    0,  1,
+        /* 53 */eepromBank, chronoSet_3_SabEnabAddr,    "Weekly 3 Saturday",                  0,  1,
+        /* 54 */eepromBank, chronoSet_3_DomEnabAddr,    "Weekly 3 Sunday",                    0,  1,
         /*********/
-        /* 54 */eepromBank, chronoSet_4_OnAddr,         "Crono Sett. 4 ON Time",            0,  10,
-        /* 55 */eepromBank, chronoSet_4_OffAddr,        "Crono Sett. 4 OFF Time",           0,  10,
-        /* 56 */eepromBank, chronoSet_4_LunEnabAddr,    "Crono Sett. 4 Lun abilitato",      0,  1,
-        /* 57 */eepromBank, chronoSet_4_MarEnabAddr,    "Crono Sett. 4 Mar abilitato",      0,  1,
-        /* 58 */eepromBank, chronoSet_4_MerEnabAddr,    "Crono Sett. 4 Mer abilitato",      0,  1,
-        /* 59 */eepromBank, chronoSet_4_GioEnabAddr,    "Crono Sett. 4 Gio abilitato",      0,  1,
-        /* 60 */eepromBank, chronoSet_4_VenEnabAddr,    "Crono Sett. 4 Ven abilitato",      0,  1,
-        /* 61 */eepromBank, chronoSet_4_SabEnabAddr,    "Crono Sett. 4 Sab abilitato",      0,  1,
-        /* 62 */eepromBank, chronoSet_4_DomEnabAddr,    "Crono Sett. 4 Dom abilitato",      0,  1,
+        /* 55 */eepromBank, chronoSet_4_OnAddr,         "Weekly 4 start",                     0,  10,
+        /* 56 */eepromBank, chronoSet_4_OffAddr,        "Weekly 4 stop",                      0,  10,
+        /* 57 */eepromBank, chronoSet_4_LunEnabAddr,    "Weekly 4 Monday",                    0,  1,
+        /* 58 */eepromBank, chronoSet_4_MarEnabAddr,    "Weekly 4 Tuesday",                   0,  1,
+        /* 59 */eepromBank, chronoSet_4_MerEnabAddr,    "Weekly 4 Wednesday",                 0,  1,
+        /* 60 */eepromBank, chronoSet_4_GioEnabAddr,    "Weekly 4 Thursday",                  0,  1,
+        /* 61 */eepromBank, chronoSet_4_VenEnabAddr,    "Weekly 4 Friday",                    0,  1,
+        /* 62 */eepromBank, chronoSet_4_SabEnabAddr,    "Weekly 4 Saturday",                  0,  1,
+        /* 63 */eepromBank, chronoSet_4_DomEnabAddr,    "Weekly 4 Sunday",                    0,  1,
+        /*********/
+        /* 64 */eepromBank, clockSet_DoWAddr,           "Clock set day of week",              0,  1,
+        /* 65 */eepromBank, clockSet_HourAddr,          "Clock set hours",                    0,  1,
+        /* 66 */eepromBank, clockSet_MinuteAddr,        "Clock set minutes",                  0,  1,
+        /* 67 */eepromBank, clockSet_DayAddr,           "Clock set day",                      0,  1,
+        /* 68 */eepromBank, clockSet_MonthAddr,         "Clock set month",                    0,  1,
+        /* 69 */eepromBank, clockSet_YearAddr,          "Clock set year",                     0,  1,
         /*********/
     };
 
 
     static SerialProto *getInstance();
-    //static QObject* createSingletonInstance(QQmlEngine *engine,  QJSEngine *scriptEngine);
-    //QList<serialPortStruct *> serialPortStructs();
     void setSerPort(const QString &serPortName);
+    QString serPort() const { return m_selSerial; }
+    LinkState linkState() const { return m_linkState; }
     bool openSerPort();
     void closeSerPort();
     void startSerLoop();
@@ -343,17 +350,14 @@ public:
     void writeStoveIncPower();
     void writeStoveDecSetPoint();
     void writeStoveIncSetPoint();
-    void writeChronoEnable(bool val);
-    void writeChronoWkeEnable(bool val);
-    void writeChronoWke1On(quint8 val);
-    void writeChronoWke1Off(quint8 val);
+    bool writeChrono(RequestsIndex index, quint8 value);
+    bool writeClock(const QDateTime &dt);
     void setChronoSerialGet(bool newChronoSerialGet);
 
 private:
     static SerialProto *instance;
     explicit SerialProto(QObject *parent = nullptr);
 
-    //QList<serialPortStruct *> m_serialPortStructs;
     QString m_selSerial;
     QSerialPort m_serial;
     QTimer m_loopTimer;
@@ -379,21 +383,23 @@ private:
     bool m_readRetried;
     quint8 m_state, m_previousState, m_nextState;
 
-    quint8 m_stoveState, m_smokeTemp, m_flamePower, m_setPower, m_smokeFanSpeed;
+    quint8 m_stoveState, m_flamePower, m_setPower;
+    quint16 m_smokeFanRpm;
     quint8 m_setTempRaw;                    //Setpoint in half degrees, as on the stove
     bool m_setTempRead, m_setPowerRead;     //-/+ ignored until the value has been read
-    quint16 m_ambTempDC, m_setTempDC;
     quint32 m_txMessages, m_rxMessages, m_rxErrors, m_rxChecksumErrors, m_rxTimeouts;
     bool m_readPending;                     //Read sent, nothing received yet
-    float m_ambTemp, m_setTemp, m_tonCochlea;
     quint8 m_stoveYear, m_stoveMonth, m_stoveDay, m_stoveDoW,
         m_stoveHour, m_stoveMinutes, m_stoveSeconds;
     bool m_chronoSerialGet;
+    QDateTime m_clockSet;                   //Time written by writeClock
+    QElapsedTimer m_clockSetAge;
 
     void resetLoop();
     void checkReadTimeout();
     void setLinkState(LinkState linkState);
     void readStoveInfo(quint8, quint8);
+    void storeValue(RequestsIndex index, quint8 val);
     void writeStoveCmd(RequestsIndex index, quint8 value);
     void sendData(QByteArray data);
     void sendWrite();
@@ -401,7 +407,6 @@ private:
 signals:
     void writeFailed(quint8 page, quint8 address, quint8 value);
     void linkStateChanged(quint8 linkState);
-    void serialPortStructsChanged();
     void serialOpened();
     void serialClosed();
     void serialError(QString);
@@ -411,20 +416,11 @@ signals:
     void updateAmbTemp(float ambTemp);
     void updateSetTemp(float setTemp);
     void updateStoveState(quint8 stoveState, QString stoveStateStr);
-    void updateAmbTemp(quint16 ambTempDC, quint16 setTempDC);
     void updatePower(quint8 setPower, quint8 flamePower);
-    void updateSmoke(quint8 smokeTemp, quint8 smokeFanSpeed);
+    void updateSmoke(quint8 smokeTemp, quint16 smokeFanRpm);
+    void updatePowerInUse(quint8 powerInUse);
     void updateChronoEnable(bool chronoEnable);
-    void updateChronoWkEEnable(bool chronoWkEEnable);
-    void updateChronoWkE1On(quint8 chronoWkE1On);
-    void updateChronoWkE1Off(quint8 chronoWkE1Off);
-    void updateChronoWkE2On(quint8 chronoWkE2On);
-    void updateChronoWkE2Off(quint8 chronoWkE2Off);
-    void updateChronoDayEnable(bool chronoWkEEnable);
-    void updateChronoDay1On(quint8 chronoWkE1On);
-    void updateChronoDay1Off(quint8 chronoWkE1Off);
-    void updateChronoDay2On(quint8 chronoWkE2On);
-    void updateChronoDay2Off(quint8 chronoWkE2Off);
+    void chronoRead(quint8 index, quint8 value);   //Every chrono parameter, index = RequestsIndex
 
     void updateStoveDateTime(QDateTime stoveDateTime);
 

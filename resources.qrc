@@ -1,9 +1,13 @@
 <RCC>
     <qresource prefix="/">
         <file>qss/default.qss</file>
-        <file>fonts/AdvancedDotDigital7ls.ttf</file>
+        <file>icons/alarm.svg</file>
+        <file>icons/arrow.svg</file>
+        <file>icons/back.svg</file>
+        <file>icons/clock.svg</file>
+        <file>icons/flame.svg</file>
+        <file>icons/link.svg</file>
         <file>icons/power.svg</file>
-        <file>icons/wall-clock-drk.png</file>
-        <file>icons/wall-clock-v.png</file>
+        <file>icons/reset.svg</file>
     </qresource>
 </RCC>

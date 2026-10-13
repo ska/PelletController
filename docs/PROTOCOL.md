@@ -32,7 +32,9 @@ port=/dev/ttyUSB0
 
 The panel is the master: the stove board only answers requests. A reply
 is complete when the line stays idle for 100 ms
-(`SERIAL_RX_IDLE_TIMEOUT`).
+(`SERIAL_RX_IDLE_TIMEOUT`). The stove board must therefore start
+its answer within about 100 ms of the end of the echo: this stove does,
+some Micronova boards are reported to need about 120 ms.
 
 ## Banks
 
@@ -106,7 +108,7 @@ request is a timeout: counted (Tmo) and read again once, like an invalid
 reply. A reply with the echo only (2 bytes) means the stove board did not
 answer (Err).
 
-The panel shows the counters in the top bar: `Tx` requests sent, `Rx`
+The diagnostic page shows the counters: `Tx` requests sent, `Rx`
 valid replies, `Err` replies with a wrong length or echo, `Chk` replies
 with a wrong checksum, `Tmo` requests without any reply; `Tx` = `Rx` +
 `Err` + `Chk` + `Tmo`. On this stove a full start and stop cycle had no
@@ -136,7 +138,7 @@ Reset after an alarm = write 0 (Off).
 
 ## Parameter map
 
-`requestsMap` in `serialproto.h`, 63 entries; the index is
+`requestsMap` in `serialproto.h`, 64 entries; the index is
 `RequestsIndex`.
 
 ### Live values and settings
@@ -149,16 +151,17 @@ Reset after an alarm = write 0 (Off).
 | 3 | RAM | `34` | Flame power | 0-16, shown as value × 90 / 16 + 10 %; 0 % when Off or from Final Cleaning on |
 | 4 | RAM | `37` | Smoke fan speed | value × 10 + 250 rpm |
 | 5 | RAM | `5A` | Smoke temperature | °C |
-| 6 | RAM | `65` | Seconds | 0-59 |
-| 7 | RAM | `66` | Day of week | 1 Monday - 7 Sunday |
-| 8 | RAM | `67` | Hours | 0-23 |
-| 9 | RAM | `68` | Minutes | 0-59 |
-| 10 | RAM | `69` | Day of month | 1-31 |
-| 11 | RAM | `6A` | Month | 1-12 |
-| 12 | RAM | `6B` | Year | year - 2000 |
-| 13 | EEPROM | `7D` | Setpoint | value / 2 °C; the panel writes 10-60 (5.0-30.0 °C) |
-| 14 | EEPROM | `7F` | Power | 1-5 |
-| 15 | EEPROM | `4C` | Chrono on/off | 0 / 1 |
+| 6 | RAM | `19` | Power in use | power level, `90` when Off |
+| 7 | RAM | `65` | Seconds | 0-59 |
+| 8 | RAM | `66` | Day of week | 1 Monday - 7 Sunday |
+| 9 | RAM | `67` | Hours | 0-23 |
+| 10 | RAM | `68` | Minutes | 0-59 |
+| 11 | RAM | `69` | Day of month | 1-31 |
+| 12 | RAM | `6A` | Month | 1-12 |
+| 13 | RAM | `6B` | Year | year - 2000 |
+| 14 | EEPROM | `7D` | Setpoint | value / 2 °C; the panel writes 10-60 (5.0-30.0 °C) |
+| 15 | EEPROM | `7F` | Power | 1-5 |
+| 16 | EEPROM | `4C` | Chrono on/off | 0 / 1 |
 
 ### Chrono programs
 
@@ -167,25 +170,25 @@ off. Example: 42 = 07:00, 132 = 22:00. Day flags are 0 / 1.
 
 | Index | Address | Parameter |
 |---|---|---|
-| 16 | `42` | Weekend program on/off |
-| 17-18 | `43`, `44` | Weekend slot 1 start, stop |
-| 19-20 | `45`, `46` | Weekend slot 2 start, stop |
-| 21 | `47` | Daily program on/off |
-| 22-23 | `48`, `49` | Daily slot 1 start, stop |
-| 24-25 | `4A`, `4B` | Daily slot 2 start, stop |
-| 26 | `50` | Weekly program on/off |
-| 27-28 | `51`, `52` | Weekly slot 1 start, stop |
-| 29-35 | `53`-`59` | Weekly slot 1 days, Monday to Sunday |
-| 36-37 | `5A`, `5B` | Weekly slot 2 start, stop |
-| 38-44 | `5C`-`62` | Weekly slot 2 days, Monday to Sunday |
-| 45-46 | `63`, `64` | Weekly slot 3 start, stop |
-| 47-53 | `65`-`6B` | Weekly slot 3 days, Monday to Sunday |
-| 54-55 | `6C`, `6D` | Weekly slot 4 start, stop |
-| 56-62 | `6E`-`74` | Weekly slot 4 days, Monday to Sunday |
+| 17 | `42` | Weekend program on/off |
+| 18-19 | `43`, `44` | Weekend slot 1 start, stop |
+| 20-21 | `45`, `46` | Weekend slot 2 start, stop |
+| 22 | `47` | Daily program on/off |
+| 23-24 | `48`, `49` | Daily slot 1 start, stop |
+| 25-26 | `4A`, `4B` | Daily slot 2 start, stop |
+| 27 | `50` | Weekly program on/off |
+| 28-29 | `51`, `52` | Weekly slot 1 start, stop |
+| 30-36 | `53`-`59` | Weekly slot 1 days, Monday to Sunday |
+| 37-38 | `5A`, `5B` | Weekly slot 2 start, stop |
+| 39-45 | `5C`-`62` | Weekly slot 2 days, Monday to Sunday |
+| 46-47 | `63`, `64` | Weekly slot 3 start, stop |
+| 48-54 | `65`-`6B` | Weekly slot 3 days, Monday to Sunday |
+| 55-56 | `6C`, `6D` | Weekly slot 4 start, stop |
+| 57-63 | `6E`-`74` | Weekly slot 4 days, Monday to Sunday |
 
-All chrono parameters are in the EEPROM bank. The panel edits chrono
-on/off, weekend on/off and weekend slot 1 (start, stop or off); the rest
-is read only (issue 19).
+All chrono parameters are in the EEPROM bank. The panel edits all of
+them: chrono on/off, the three programs on/off, every start and stop
+(or off) and the weekly days.
 
 ### Written by the panel
 
@@ -195,15 +198,26 @@ is read only (issue 19).
 | Setpoint | EEPROM `7D` | read value ± 1, kept in 10-60 |
 | Power | EEPROM `7F` | read value ± 1, kept in 1-5 |
 | Chrono on/off | EEPROM `4C` | 0 / 1 |
-| Weekend on/off | EEPROM `42` | 0 / 1 |
-| Weekend slot 1 start, stop | EEPROM `43`, `44` | 0-143, 144 off |
+| Program on/off: weekend, daily, weekly | EEPROM `42`, `47`, `50` | 0 / 1 |
+| Every slot start and stop | EEPROM `43`-`46`, `48`-`4B`, weekly slots | 0-143, 144 off |
+| Weekly days | EEPROM `53`-`59`, `5C`-`62`, `65`-`6B`, `6E`-`74` | 0 / 1 |
+| Stove clock | EEPROM `F8`-`FD` | day of week (1 Monday), hours, minutes, day, month, year - 2000, in BCD (`13` = 13) |
+
+Every chrono write goes through `writeChrono`, which refuses anything
+outside these ranges. The clock goes through `writeClock` (six writes,
+not polled).
+
+The stove takes a new clock at once (its display changes), but the RAM
+clock copy `65`-`6B` keeps the old time for one or two minutes: for two
+minutes after a clock set the panel shows the time written, running
+(`CLOCK_SET_HOLD_MS`).
 
 Setpoint and power -/+ do nothing until the value has been read from the
 stove (and again after the serial port was lost).
 
 ### Other known locations
 
-Not used by the panel yet.
+Not used by the panel yet, except RAM `19` (shown on the diagnostic page).
 
 | Bank / address | Content |
 |---|---|
@@ -211,7 +225,6 @@ Not used by the panel yet.
 | RAM `19` | Likely the power level in use: `90` Off, 1 Pellet Loading, 2 Working at power 2 |
 | RAM `36` | Likely the smoke fan speed requested (`37` the actual one): 0 Off, about 200 in Pellet Loading |
 | RAM `9B`-`B2`, `BD`-`C8` | Text shown on the stove display, ASCII, scrolling (`OFF`, "CARICA PELLET" read in pieces) |
-| EEPROM `F8`-`FD` | Clock to set: day of week (1 Monday), hours, minutes, day, month, year - 2000, in BCD (`13` = 13) |
 
 ## Verified on the stove
 
@@ -228,6 +241,15 @@ Off, compared with the stove display:
 - Weekly program: the "slot off" times (`90`) are at `51`/`52`, `5A`/`5B`,
   `63`/`64`, `6C`/`6D`, a slot every 9 bytes as in the map above
 - EEPROM `F8`-`FD` = `02 09 13 13 10 26`: the clock in BCD
+- Clock set from the panel to 12:40 with the stove 30 minutes ahead: the
+  stove display showed 12:41 right after, the RAM clock `65`-`6B` reached
+  12:42 about two minutes later (`03 02 0C 2A 0D 0A 1A`)
+- Daily program `47`-`4B` = `00 00 90 90 00`: off, slot 1 00:00-off,
+  slot 2 off-00:00, as on the stove display
+- Weekly program set on the stove display, then read: slot 2 `5A`-`62` =
+  `2D 3C 00 00 01 01 01 00 01` (07:30-10:00, Wednesday, Thursday, Friday,
+  Sunday), slot 3 `63`-`6B` = `30 39 00 00 00 00 00 00 01` (08:00-09:30,
+  Sunday): a slot every 9 bytes, days from Monday to Sunday
 
 RAM dump and three more reads 20 s apart with the stove in Pellet
 Loading (state RAM `21` = 2):
@@ -283,17 +305,17 @@ Check a new stove model with `tools/stovedump` before trusting the map.
 
 One request every 200 ms (`SERIAL_MESSAGE_DELAY`).
 
-Main page: indexes 0-15, with the stove state every other request, then
+Main page: indexes 0-16, with the stove state every other request, then
 a 2 s pause (`SERIAL_SESSION_DELAY`). One round, about 8 s:
 
 ```text
-01 21 0D 21 34 21 37 21 5A 21 65 21 66 21 67 21 68 21 69 21 6A 21 6B 21 7D 21 7F 21 4C 21
+01 21 0D 21 34 21 37 21 5A 21 19 21 65 21 66 21 67 21 68 21 69 21 6A 21 6B 21 7D 21 7F 21 4C 21
 ```
 
 The stove date and time is shown at the end of each round.
 
 Chrono page: chrono on/off and all the chrono programs in order (indexes
-15-62, `4C`, then `42`-`74`), then a 2 s pause; about 12 s per round.
+16-63, `4C`, then `42`-`74`), then a 2 s pause; about 12 s per round.
 
 An invalid reply is followed by one more read of the same parameter at
 the next tick, without moving the sequence on.

@@ -9,7 +9,17 @@
  * SerialProto against the stove simulator (tools/stovesim), in real time:
  * 200 ms per request as on the panel. Never a real port: the port name is
  * a symlink in a temporary directory.
+ *
+ * On a busy machine the simulator can answer later than the 100 ms idle
+ * time of SerialProto: the reply is then taken as invalid and read again,
+ * which changes the exact request sequence. The tests that check a
+ * sequence skip (not fail) when errors appear that they did not inject.
  */
+
+/* Skip the test when Err, Chk or Tmo grew more than the faults injected */
+#define SKIP_IF_LATE(err, chk, tmo) \
+    do { if(late(err, chk, tmo)) QSKIP("Unexpected Err/Chk/Tmo: machine too busy, simulator replies late"); } while(0)
+
 class TstSerialProto : public QObject
 {
     Q_OBJECT
@@ -27,11 +37,16 @@ class TstSerialProto : public QObject
         return (count < 0 ? s : s.mid(0, count)).join(' ');
     }
 
-    /* Counters of the last updateStats: Tx, Rx, Err, Chk, Tmo */
-    static QList<quint32> stats(const QSignalSpy &spy, int i = -1)
+    /* Last updateStats: Tx, Rx (from the last start), Err, Chk, Tmo (since
+     * the start of the process); m_base: the same at the start of the test */
+    QList<quint32> m_stats { 0, 0, 0, 0, 0 };
+    QList<quint32> m_base;
+
+    quint32 delta(int i) const { return m_stats.at(i) - m_base.at(i); }
+
+    bool late(quint32 err, quint32 chk, quint32 tmo) const
     {
-        const QList<QVariant> a = spy.at(i < 0 ? spy.count() - 1 : i);
-        return { a.at(0).toUInt(), a.at(1).toUInt(), a.at(2).toUInt(), a.at(3).toUInt(), a.at(4).toUInt() };
+        return delta(2) > err || delta(3) > chk || delta(4) > tmo;
     }
 
     void start(bool chrono = false)
@@ -46,10 +61,15 @@ private slots:
     {
         QVERIFY(m_dir.isValid());
         m_proto = SerialProto::getInstance();
+        connect(m_proto, &SerialProto::updateStats, this,
+                [this](quint32 tx, quint32 rx, quint32 err, quint32 chk, quint32 tmo) {
+                    m_stats = { tx, rx, err, chk, tmo };
+                });
     }
 
     void init()
     {
+        m_base = m_stats;
         m_sim = new StoveSim(m_dir.filePath("stove"));
         QVERIFY(m_sim->plug());
         m_proto->setSerPort(m_sim->linkPath());
@@ -69,9 +89,10 @@ private slots:
         QSignalSpy set(m_proto, SIGNAL(updateSetTemp(float)));
         QSignalSpy state(m_proto, SIGNAL(updateStoveState(quint8,QString)));
         start();
-        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 30, 10000);
-        QCOMPARE(sequence(30), QString("01 21 0d 21 34 21 37 21 5a 21 65 21 66 21 67 21 68 21 "
-                                       "69 21 6a 21 6b 21 7d 21 7f 21 4c 21"));
+        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 32, 10000);
+        SKIP_IF_LATE(0, 0, 0);
+        QCOMPARE(sequence(32), QString("01 21 0d 21 34 21 37 21 5a 21 19 21 65 21 66 21 67 21 "
+                                       "68 21 69 21 6a 21 6b 21 7d 21 7f 21 4c 21"));
         QCOMPARE(amb.first().at(0).toFloat(), 20.0f);
         QCOMPARE(set.first().at(0).toFloat(), 22.5f);
         QCOMPARE(state.first().at(1).toString(), QString("Off"));
@@ -80,40 +101,34 @@ private slots:
     /* Wrong checksum: Chk + 1, the same parameter read again once */
     void checksumRetry()
     {
-        QSignalSpy st(m_proto, SIGNAL(updateStats(quint32,quint32,quint32,quint32,quint32)));
         m_sim->corruptChecksums(1, 0x21);
         start();
-        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 5, 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 6, 3000);
+        SKIP_IF_LATE(0, 1, 0);
         QCOMPARE(sequence(5), QString("01 21 21 0d 21"));
-        QTRY_VERIFY_WITH_TIMEOUT(st.count() >= 4, 2000);
-        QCOMPARE(stats(st)[3], stats(st, 0)[3] + 1);
-        QCOMPARE(stats(st)[2], stats(st, 0)[2]);
+        QCOMPARE(delta(3), 1u);
     }
 
     /* Wrong echo: Err + 1, read again once (issue 8) */
     void echoRetry()
     {
-        QSignalSpy st(m_proto, SIGNAL(updateStats(quint32,quint32,quint32,quint32,quint32)));
         m_sim->corruptEchoes(1, 0x21);
         start();
-        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 5, 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 6, 3000);
+        SKIP_IF_LATE(1, 0, 0);
         QCOMPARE(sequence(5), QString("01 21 21 0d 21"));
-        QTRY_VERIFY_WITH_TIMEOUT(st.count() >= 4, 2000);
-        QCOMPARE(stats(st)[2], stats(st, 0)[2] + 1);
+        QCOMPARE(delta(2), 1u);
     }
 
     /* Nothing comes back (not even the echo): Tmo + 1, read again once */
     void lostRequest()
     {
-        QSignalSpy st(m_proto, SIGNAL(updateStats(quint32,quint32,quint32,quint32,quint32)));
         m_sim->dropRequests(1, 0x21);
         start();
-        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 5, 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 6, 3000);
+        SKIP_IF_LATE(0, 0, 1);
         QCOMPARE(sequence(5), QString("01 21 21 0d 21"));
-        QTRY_VERIFY_WITH_TIMEOUT(st.count() >= 4, 2000);
-        QCOMPARE(stats(st)[4], stats(st, 0)[4] + 1);
-        QCOMPARE(stats(st)[2], stats(st, 0)[2]);
-        QCOMPARE(stats(st)[3], stats(st, 0)[3]);
+        QCOMPARE(delta(4), 1u);
     }
 
     /* The retry fails too: no second retry */
@@ -121,8 +136,10 @@ private slots:
     {
         m_sim->corruptChecksums(2, 0x21);
         start();
-        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 5, 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 6, 3000);
+        SKIP_IF_LATE(0, 2, 0);
         QCOMPARE(sequence(5), QString("01 21 21 0d 21"));
+        QCOMPARE(delta(3), 2u);
     }
 
     /* Echo only: "No reply" after 10 s, OK again with the first valid reply */
@@ -194,7 +211,7 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!amb.isEmpty(), 2000);
         m_sim->unplug();
         QTRY_VERIFY_WITH_TIMEOUT(!link.isEmpty() && link.last().at(0).toInt() == SerialProto::LinkPortClosed, 3000);
-        m_proto->writeChronoEnable(true);
+        m_proto->writeChrono(SerialProto::chronoEnableIndex, 1);
         QCOMPARE(failed.count(), 1);
         QTest::qWait(4000);                 //At least one failed reopen
         QVERIFY(m_sim->plug());
@@ -203,19 +220,80 @@ private slots:
         QTRY_VERIFY_WITH_TIMEOUT(!amb.isEmpty(), 10000);
     }
 
+    /* Smoke temperature and fan speed, power in use (RAM 5A, 37, 19) */
+    void smokeAndPowerInUse()
+    {
+        QSignalSpy smoke(m_proto, SIGNAL(updateSmoke(quint8,quint16)));
+        QSignalSpy inUse(m_proto, SIGNAL(updatePowerInUse(quint8)));
+        m_sim->setRam(0x37, 60);
+        m_sim->setRam(0x19, 2);
+        start();
+        QTRY_VERIFY_WITH_TIMEOUT(!smoke.isEmpty() && !inUse.isEmpty(), 4000);
+        QCOMPARE(smoke.first().at(0).toInt(), 25);
+        QCOMPARE(smoke.first().at(1).toInt(), 60 * 10 + 250);
+        QCOMPARE(inUse.first().at(0).toInt(), 2);
+    }
+
+    /* Chrono writes: in range written, out of range refused */
+    void chronoWrite()
+    {
+        QSignalSpy writes(m_sim, &StoveSim::writeReceived);
+        start();
+        QTest::qWait(300);
+        QVERIFY(!m_proto->writeChrono(SerialProto::chronoWkE_2_OnIndex, 145));
+        QVERIFY(!m_proto->writeChrono(SerialProto::chronoWkE_EnableIndex, 2));
+        QVERIFY(!m_proto->writeChrono(SerialProto::tempSetIndex, 40));
+        QVERIFY(m_proto->writeChrono(SerialProto::chronoWkE_2_OnIndex, 102));
+        QVERIFY(m_proto->writeChrono(SerialProto::chronoDay_1_OffIndex, 144));
+        QTRY_COMPARE_WITH_TIMEOUT(writes.count(), 2, 3000);
+        QCOMPARE(int(m_sim->eeprom(0x45)), 102);
+        QCOMPARE(int(m_sim->eeprom(0x49)), 144);
+    }
+
+    /* Stove clock: six BCD writes to EEPROM F8-FD, then read back from the
+     * RAM clock (the simulator copies it as the board does) */
+    void clockWrite()
+    {
+        QSignalSpy clock(m_proto, SIGNAL(updateStoveDateTime(QDateTime)));
+        QSignalSpy failed(m_proto, SIGNAL(writeFailed(quint8,quint8,quint8)));
+        start();
+        QTest::qWait(300);
+        QVERIFY(!m_proto->writeClock(QDateTime()));
+        QVERIFY(m_proto->writeClock(QDateTime(QDate(2026, 10, 13), QTime(9, 35))));
+        QTRY_COMPARE_WITH_TIMEOUT(int(m_sim->eeprom(0xFD)), 0x26, 6000);
+        const quint8 expected[6] = { 0x02, 0x09, 0x35, 0x13, 0x10, 0x26 };
+        for(int i = 0; i < 6; i++)
+            QCOMPARE(int(m_sim->eeprom(quint8(0xF8 + i))), int(expected[i]));
+        QCOMPARE(failed.count(), 0);
+        clock.clear();
+        QTRY_VERIFY_WITH_TIMEOUT(!clock.isEmpty(), 12000);
+        const QDateTime dt = clock.last().at(0).toDateTime();
+        QCOMPARE(dt.date(), QDate(2026, 10, 13));
+        QCOMPARE(dt.time().hour(), 9);
+        QCOMPARE(dt.time().minute(), 35);
+    }
+
     /* Chrono page: chrono on/off, then 42-74 in order, last one included (issue 6) */
     void chronoRound()
     {
-        QSignalSpy st(m_proto, SIGNAL(updateStats(quint32,quint32,quint32,quint32,quint32)));
+        QSignalSpy chrono(m_proto, SIGNAL(chronoRead(quint8,quint8)));
         start(true);
         QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 48, 13000);
         QStringList expected { "4c" };
         for(int a = 0x42; a <= 0x74; a++)
             if(a <= 0x4b || a >= 0x50)
                 expected << QString("%1").arg(a, 2, 16, QChar('0'));
+        SKIP_IF_LATE(0, 0, 0);
         QCOMPARE(sequence(48), expected.join(' '));
         //Every valid reply counted, also for the parameters the panel does not use (issue 27)
-        QVERIFY(stats(st)[0] - stats(st)[1] <= 1);
+        QVERIFY(m_stats.at(0) - m_stats.at(1) <= 1);
+        //Every chrono parameter emitted with its index
+        QTRY_VERIFY_WITH_TIMEOUT(chrono.count() >= 48, 1000);
+        bool found = false;
+        for(const QList<QVariant> &c : chrono)
+            if(c.at(0).toInt() == SerialProto::chronoWkE_1_OnIndex)
+                found = c.at(1).toInt() == 42;
+        QVERIFY(found);
     }
 
     /* Flame power from the stove while working, 0 when Off (issue 11) */

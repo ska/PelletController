@@ -1,7 +1,7 @@
 #include "mainwindow.h"
+#include "serialproto.h"
 #include "common.h"
 
-#include <QFontDatabase>
 #include <QApplication>
 #include <QSettings>
 #include <QDebug>
@@ -53,7 +53,6 @@ int main(int argc, char *argv[])
     w.showMaximized();
 #endif
 
-    QFontDatabase::addApplicationFont(":/fonts/AdvancedDotDigital7ls.ttf");
     ret = a.exec();
 
 

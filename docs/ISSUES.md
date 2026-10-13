@@ -21,18 +21,18 @@ Severity:
 | 9 | [Writes not verified](#9-writes-not-verified) | Medium | Fixed in 0.2.0 |
 | 10 | [Fixed serial port, no reconnection](#10-fixed-serial-port-no-reconnection) | Medium | Fixed in 0.2.0 |
 | 11 | [Stale flame power when the stove is off](#11-stale-flame-power-when-the-stove-is-off) | Low | Fixed in 0.2.0 |
-| 12 | [200-line switch and dead code](#12-200-line-switch-and-dead-code) | Low | Open |
-| 13 | [String based connections, `on_` slot names](#13-string-based-connections-on_-slot-names) | Low | Open |
-| 14 | [`QSignalMapper` deprecated](#14-qsignalmapper-deprecated) | Low | Open |
-| 15 | [Button logic on the button text](#15-button-logic-on-the-button-text) | Low | Open |
-| 16 | [Leaks](#16-leaks) | Low | Open |
-| 17 | [Swapped ON/OFF descriptions](#17-swapped-onoff-descriptions) | Low | Open |
+| 12 | [200-line switch and dead code](#12-200-line-switch-and-dead-code) | Low | Fixed in 0.3.0 |
+| 13 | [String based connections, `on_` slot names](#13-string-based-connections-on_-slot-names) | Low | Fixed in 0.3.0 |
+| 14 | [`QSignalMapper` deprecated](#14-qsignalmapper-deprecated) | Low | Fixed in 0.3.0 |
+| 15 | [Button logic on the button text](#15-button-logic-on-the-button-text) | Low | Fixed in 0.3.0 |
+| 16 | [Leaks](#16-leaks) | Low | Fixed in 0.3.0 |
+| 17 | [Swapped ON/OFF descriptions](#17-swapped-onoff-descriptions) | Low | Fixed in 0.3.0 |
 | 18 | [Archives in the working tree](#18-archives-in-the-working-tree) | Low | Fixed: `*.tar` ignored |
-| 19 | [Daily and weekly chrono read only](#19-daily-and-weekly-chrono-read-only) | Feature | Open |
+| 19 | [Daily and weekly chrono read only](#19-daily-and-weekly-chrono-read-only) | Feature | Fixed in 0.3.0 |
 | 20 | [Chrono read resets Start 1 to 00:00](#20-chrono-read-resets-start-1-to-0000) | High | Fixed in 0.2.0 |
-| 21 | [Stop 1 not connected](#21-stop-1-not-connected) | Medium | Fixed in 0.2.0 (slot 2 still missing) |
+| 21 | [Stop 1 not connected](#21-stop-1-not-connected) | Medium | Fixed in 0.2.0, slot 2 in 0.3.0 |
 | 22 | [Off button active during an alarm](#22-off-button-active-during-an-alarm) | Medium | Fixed in 0.2.0 |
-| 23 | [GUI texts](#23-gui-texts) | Low | Open |
+| 23 | [GUI texts](#23-gui-texts) | Low | Partly fixed in 0.3.0 |
 | 24 | [Invalid reply not read again](#24-invalid-reply-not-read-again) | Low | Fixed in 0.2.0 |
 | 25 | [Stove state read twice in a row](#25-stove-state-read-twice-in-a-row) | Low | Fixed in 0.2.0 |
 | 26 | [Lost replies not counted](#26-lost-replies-not-counted) | Low | Fixed in 0.2.0 |
@@ -206,6 +206,10 @@ Fix: 0 for state 0 as well.
 
 ## 12. 200-line switch and dead code
 
+Fixed in 0.3.0: one `storeValue` with a short switch on the index, the
+chrono parameters emitted as `chronoRead(index, value)`; the `#if 0`
+blocks and the unused members and signals removed.
+
 `serialproto.cpp:223` and the `#if 0` blocks (`serialproto.cpp:17`, `23`,
 `57`, `82`, `318`, `456`; `serialproto.h:103`)
 
@@ -215,6 +219,10 @@ Fix: keep the scale and a handler in `requestsMap`, one generic parse; drop
 the dead code.
 
 ## 13. String based connections, `on_` slot names
+
+Fixed in 0.3.0: pages built in code with pointer to member connections,
+no `on_<object>_<signal>` slots left (the optional watchdog code in
+`main.cpp` excepted).
 
 `mainwindow.cpp:49-68`
 
@@ -227,11 +235,16 @@ Fix: pointer to member connections; rename the slots (e.g. `showAmbTemp`).
 
 ## 14. `QSignalMapper` deprecated
 
+Fixed in 0.3.0: the chrono page has one lambda per time button.
+
 `mainwindow.cpp:63`
 
 Fix: one lambda per LCD.
 
 ## 15. Button logic on the button text
+
+Fixed in 0.3.0: the redesigned main page (`MainPage`) decides Turn on,
+Turn off or Reset from the last stove state and the link state.
 
 `mainwindow.cpp:312`
 
@@ -242,6 +255,8 @@ Fix: decide on the last stove state.
 
 ## 16. Leaks
 
+Fixed in 0.3.0: every widget and timer of the new pages has a parent.
+
 `mainwindow.cpp:48`: `m_chronoShowTimer` has no parent. The `SerialProto`
 singleton is never deleted (by design: it lives as long as the
 application), so the serial port is closed only by `closeSerPort` in
@@ -250,6 +265,9 @@ application), so the serial port is closed only by `closeSerPort` in
 Fix: `new QTimer(this)`.
 
 ## 17. Swapped ON/OFF descriptions
+
+Fixed in 0.3.0: the `requestsMap` descriptions rewritten in English
+("Weekend 1 start", "Weekend 1 stop", ...).
 
 `serialproto.h:258-261`, `264-267`
 
@@ -263,6 +281,10 @@ Fixed: `*.tar` is in `.gitignore` (`PelletController.tar`,
 `PelletControllerFull.tar`, 14 MB); `*.pro.user*` was already ignored.
 
 ## 19. Daily and weekly chrono read only
+
+Fixed in 0.3.0: the daily and weekly programs are editable like the
+weekend one (weekly: slot 1-4 selector, start, stop, a button per day),
+after checking their maps against the stove display.
 
 The daily program (2 slots) and the weekly program (4 slots with day
 flags) are read from the stove, but their tabs are empty: only chrono
@@ -289,8 +311,8 @@ Write LCD:  0
 ```
 
 The time picker opens on 00:00 for the same reason, whatever the LCD shows
-(see the [time picker screenshot](images/chrono-time-edit.png): Start 1
-shows 07:00).
+(the 0.1.0 screenshot of the time picker showed it over a Start 1 of
+07:00).
 
 Fix: `lcd->setTensOfMins(u)` in place of `display()`, set the LCD before
 the check box, and fix issue 3.
@@ -298,8 +320,8 @@ the check box, and fix issue 3.
 ## 21. Stop 1 not connected
 
 Fixed in 0.2.0: Stop 1 shows the value read (`updateChronoWkE1Off`),
-its check box writes the time or 144 (`writeChronoWke1Off`). Weekend
-slot 2 is still not on the page.
+its check box writes the time or 144 (`writeChronoWke1Off`). In 0.3.0 the
+new chrono page has weekend slot 2 too.
 
 `mainwindow.cpp:44`
 
@@ -324,6 +346,10 @@ Fix: disable the On/Off button in the alarm states, or define what it
 should do there.
 
 ## 23. GUI texts
+
+Partly fixed in 0.3.0: the new pages have real tab names (Weekend,
+Daily, Weekly) and readable texts ("Power", "Turn on"); `tr()` is still
+not used.
 
 - The chrono tabs show the object names: `chronoWkETab`, `chronoDayTab`,
   `chronoSetTab` (`mainwindow.ui`)
@@ -359,8 +385,8 @@ state was read twice (`01 21 0d 21 21 34`), one request lost per round.
 ## 26. Lost replies not counted
 
 Fixed in 0.2.0: a read without any byte back before the next request
-is counted as a timeout (`m_rxTimeouts`, `Tmo` in the top bar) and the
-parameter is read again once (as issue 24).
+is counted as a timeout (`m_rxTimeouts`, `Tmo`, now on the diagnostic
+page) and the parameter is read again once (as issue 24).
 
 `serialproto.cpp` (`checkReadTimeout`, `getStoveInfos`, `sendPendingWrite`)
 

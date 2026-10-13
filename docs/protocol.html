@@ -106,7 +106,8 @@ the parameter map is not: the map below was checked on this stove with a full me
 <pre>[SERIAL]
 port=/dev/ttyUSB0</pre>
 <p>The panel is the master: the stove board only answers requests. A reply is complete when the line
-stays idle for 100 ms (<code>SERIAL_RX_IDLE_TIMEOUT</code>).</p>
+stays idle for 100 ms (<code>SERIAL_RX_IDLE_TIMEOUT</code>). The stove board must therefore start its answer within
+about 100 ms of the end of the echo: this stove does, some Micronova boards are reported to need about 120 ms.</p>
 
 <h2 id="banks">Banks</h2>
 <div class="card scroll"><table>
@@ -170,7 +171,7 @@ smoke temperature in RAM and a chrono time in EEPROM).</p>
 <p>A read that gets no byte at all (not even the echo) before the next request is a timeout: counted
 (<code>Tmo</code>) and read again once, like an invalid reply. A reply with the echo only (2 bytes) means the stove
 board did not answer (<code>Err</code>).</p>
-<p>Top bar counters: <code>Tx</code> requests sent, <code>Rx</code> valid replies, <code>Err</code> replies with a
+<p>Counters on the diagnostic page: <code>Tx</code> requests sent, <code>Rx</code> valid replies, <code>Err</code> replies with a
 wrong length or echo, <code>Chk</code> replies with a wrong checksum, <code>Tmo</code> requests without any reply;
 <code>Tx</code> = <code>Rx</code> + <code>Err</code> + <code>Chk</code> + <code>Tmo</code>. On this stove a full start and stop
 cycle had no error and no timeout (2026-10-13).</p>
@@ -195,7 +196,7 @@ an alarm = write 0 (Off).</p>
 </table></div>
 
 <h2 id="map">Parameter map</h2>
-<p><code>requestsMap</code> in <code>serialproto.h</code>, 63 entries; the index is <code>RequestsIndex</code>.</p>
+<p><code>requestsMap</code> in <code>serialproto.h</code>, 64 entries; the index is <code>RequestsIndex</code>.</p>
 <div class="card scroll"><table>
 <tr><th>Index</th><th>Bank</th><th>Address</th><th>Parameter</th><th>Encoding</th></tr>
 <tr><td>0</td><td>RAM</td><td><code>01</code></td><td>Room temperature</td><td>value / 2 °C</td></tr>
@@ -204,39 +205,40 @@ an alarm = write 0 (Off).</p>
 <tr><td>3</td><td>RAM</td><td><code>34</code></td><td>Flame power</td><td>0-16, shown as value × 90 / 16 + 10 %; 0 % when Off or from Final Cleaning on</td></tr>
 <tr><td>4</td><td>RAM</td><td><code>37</code></td><td>Smoke fan speed</td><td>value × 10 + 250 rpm</td></tr>
 <tr><td>5</td><td>RAM</td><td><code>5A</code></td><td>Smoke temperature</td><td>°C</td></tr>
-<tr><td>6</td><td>RAM</td><td><code>65</code></td><td>Seconds</td><td>0-59</td></tr>
-<tr><td>7</td><td>RAM</td><td><code>66</code></td><td>Day of week</td><td>1 Monday - 7 Sunday</td></tr>
-<tr><td>8</td><td>RAM</td><td><code>67</code></td><td>Hours</td><td>0-23</td></tr>
-<tr><td>9</td><td>RAM</td><td><code>68</code></td><td>Minutes</td><td>0-59</td></tr>
-<tr><td>10</td><td>RAM</td><td><code>69</code></td><td>Day of month</td><td>1-31</td></tr>
-<tr><td>11</td><td>RAM</td><td><code>6A</code></td><td>Month</td><td>1-12</td></tr>
-<tr><td>12</td><td>RAM</td><td><code>6B</code></td><td>Year</td><td>year - 2000</td></tr>
-<tr><td>13</td><td>EEPROM</td><td><code>7D</code></td><td>Setpoint</td><td>value / 2 °C; the panel writes 10-60 (5.0-30.0 °C)</td></tr>
-<tr><td>14</td><td>EEPROM</td><td><code>7F</code></td><td>Power</td><td>1-5</td></tr>
-<tr><td>15</td><td>EEPROM</td><td><code>4C</code></td><td>Chrono on/off</td><td>0 / 1</td></tr>
+<tr><td>6</td><td>RAM</td><td><code>19</code></td><td>Power in use</td><td>power level, <code>90</code> when Off</td></tr>
+<tr><td>7</td><td>RAM</td><td><code>65</code></td><td>Seconds</td><td>0-59</td></tr>
+<tr><td>8</td><td>RAM</td><td><code>66</code></td><td>Day of week</td><td>1 Monday - 7 Sunday</td></tr>
+<tr><td>9</td><td>RAM</td><td><code>67</code></td><td>Hours</td><td>0-23</td></tr>
+<tr><td>10</td><td>RAM</td><td><code>68</code></td><td>Minutes</td><td>0-59</td></tr>
+<tr><td>11</td><td>RAM</td><td><code>69</code></td><td>Day of month</td><td>1-31</td></tr>
+<tr><td>12</td><td>RAM</td><td><code>6A</code></td><td>Month</td><td>1-12</td></tr>
+<tr><td>13</td><td>RAM</td><td><code>6B</code></td><td>Year</td><td>year - 2000</td></tr>
+<tr><td>14</td><td>EEPROM</td><td><code>7D</code></td><td>Setpoint</td><td>value / 2 °C; the panel writes 10-60 (5.0-30.0 °C)</td></tr>
+<tr><td>15</td><td>EEPROM</td><td><code>7F</code></td><td>Power</td><td>1-5</td></tr>
+<tr><td>16</td><td>EEPROM</td><td><code>4C</code></td><td>Chrono on/off</td><td>0 / 1</td></tr>
 </table></div>
 
 <h3 id="chrono">Chrono programs</h3>
 <p>EEPROM bank. Times in tens of minutes from 00:00: 0-143 (00:00-23:50), 144 = slot off. Example: 42 = 07:00,
-132 = 22:00. Day flags 0 / 1. The panel edits chrono on/off, weekend on/off and weekend slot 1 (start, stop or
-off); the rest is read only (issue 19).</p>
+132 = 22:00. Day flags 0 / 1. The panel edits all of them: chrono on/off, the three programs on/off, every start and
+stop (or off) and the weekly days.</p>
 <div class="card scroll"><table>
 <tr><th>Index</th><th>Address</th><th>Parameter</th></tr>
-<tr><td>16</td><td><code>42</code></td><td>Weekend program on/off</td></tr>
-<tr><td>17-18</td><td><code>43</code>, <code>44</code></td><td>Weekend slot 1 start, stop</td></tr>
-<tr><td>19-20</td><td><code>45</code>, <code>46</code></td><td>Weekend slot 2 start, stop</td></tr>
-<tr><td>21</td><td><code>47</code></td><td>Daily program on/off</td></tr>
-<tr><td>22-23</td><td><code>48</code>, <code>49</code></td><td>Daily slot 1 start, stop</td></tr>
-<tr><td>24-25</td><td><code>4A</code>, <code>4B</code></td><td>Daily slot 2 start, stop</td></tr>
-<tr><td>26</td><td><code>50</code></td><td>Weekly program on/off</td></tr>
-<tr><td>27-28</td><td><code>51</code>, <code>52</code></td><td>Weekly slot 1 start, stop</td></tr>
-<tr><td>29-35</td><td><code>53</code>-<code>59</code></td><td>Weekly slot 1 days, Monday to Sunday</td></tr>
-<tr><td>36-37</td><td><code>5A</code>, <code>5B</code></td><td>Weekly slot 2 start, stop</td></tr>
-<tr><td>38-44</td><td><code>5C</code>-<code>62</code></td><td>Weekly slot 2 days, Monday to Sunday</td></tr>
-<tr><td>45-46</td><td><code>63</code>, <code>64</code></td><td>Weekly slot 3 start, stop</td></tr>
-<tr><td>47-53</td><td><code>65</code>-<code>6B</code></td><td>Weekly slot 3 days, Monday to Sunday</td></tr>
-<tr><td>54-55</td><td><code>6C</code>, <code>6D</code></td><td>Weekly slot 4 start, stop</td></tr>
-<tr><td>56-62</td><td><code>6E</code>-<code>74</code></td><td>Weekly slot 4 days, Monday to Sunday</td></tr>
+<tr><td>17</td><td><code>42</code></td><td>Weekend program on/off</td></tr>
+<tr><td>18-19</td><td><code>43</code>, <code>44</code></td><td>Weekend slot 1 start, stop</td></tr>
+<tr><td>20-21</td><td><code>45</code>, <code>46</code></td><td>Weekend slot 2 start, stop</td></tr>
+<tr><td>22</td><td><code>47</code></td><td>Daily program on/off</td></tr>
+<tr><td>23-24</td><td><code>48</code>, <code>49</code></td><td>Daily slot 1 start, stop</td></tr>
+<tr><td>25-26</td><td><code>4A</code>, <code>4B</code></td><td>Daily slot 2 start, stop</td></tr>
+<tr><td>27</td><td><code>50</code></td><td>Weekly program on/off</td></tr>
+<tr><td>28-29</td><td><code>51</code>, <code>52</code></td><td>Weekly slot 1 start, stop</td></tr>
+<tr><td>30-36</td><td><code>53</code>-<code>59</code></td><td>Weekly slot 1 days, Monday to Sunday</td></tr>
+<tr><td>37-38</td><td><code>5A</code>, <code>5B</code></td><td>Weekly slot 2 start, stop</td></tr>
+<tr><td>39-45</td><td><code>5C</code>-<code>62</code></td><td>Weekly slot 2 days, Monday to Sunday</td></tr>
+<tr><td>46-47</td><td><code>63</code>, <code>64</code></td><td>Weekly slot 3 start, stop</td></tr>
+<tr><td>48-54</td><td><code>65</code>-<code>6B</code></td><td>Weekly slot 3 days, Monday to Sunday</td></tr>
+<tr><td>55-56</td><td><code>6C</code>, <code>6D</code></td><td>Weekly slot 4 start, stop</td></tr>
+<tr><td>57-63</td><td><code>6E</code>-<code>74</code></td><td>Weekly slot 4 days, Monday to Sunday</td></tr>
 </table></div>
 
 <h3 id="written">Written by the panel</h3>
@@ -246,21 +248,27 @@ off); the rest is read only (issue 19).</p>
 <tr><td>Setpoint</td><td>EEPROM <code>7D</code></td><td>read value ± 1, kept in 10-60</td></tr>
 <tr><td>Power</td><td>EEPROM <code>7F</code></td><td>read value ± 1, kept in 1-5</td></tr>
 <tr><td>Chrono on/off</td><td>EEPROM <code>4C</code></td><td>0 / 1</td></tr>
-<tr><td>Weekend on/off</td><td>EEPROM <code>42</code></td><td>0 / 1</td></tr>
-<tr><td>Weekend slot 1 start, stop</td><td>EEPROM <code>43</code>, <code>44</code></td><td>0-143, 144 off</td></tr>
+<tr><td>Program on/off: weekend, daily, weekly</td><td>EEPROM <code>42</code>, <code>47</code>, <code>50</code></td><td>0 / 1</td></tr>
+<tr><td>Every slot start and stop</td><td>EEPROM <code>43</code>-<code>46</code>, <code>48</code>-<code>4B</code>, weekly slots</td><td>0-143, 144 off</td></tr>
+<tr><td>Weekly days</td><td>EEPROM <code>53</code>-<code>59</code>, <code>5C</code>-<code>62</code>, <code>65</code>-<code>6B</code>, <code>6E</code>-<code>74</code></td><td>0 / 1</td></tr>
+<tr><td>Stove clock</td><td>EEPROM <code>F8</code>-<code>FD</code></td><td>day of week (1 Monday), hours, minutes, day, month, year - 2000, in BCD (<code>13</code> = 13)</td></tr>
 </table></div>
+<p>Every chrono write goes through <code>writeChrono</code>, which refuses anything outside these ranges. The clock goes
+through <code>writeClock</code> (six writes, not polled).</p>
+<p>The stove takes a new clock at once (its display changes), but the RAM clock copy <code>65</code>-<code>6B</code> keeps the
+old time for one or two minutes: for two minutes after a clock set the panel shows the time written, running
+(<code>CLOCK_SET_HOLD_MS</code>).</p>
 <p>Setpoint and power -/+ do nothing until the value has been read from the stove (and again after the serial
 port was lost).</p>
 
 <h3 id="other">Other known locations</h3>
-<p>Not used by the panel yet.</p>
+<p>Not used by the panel yet, except RAM <code>19</code> (shown on the diagnostic page).</p>
 <div class="card scroll"><table>
 <tr><th>Bank / address</th><th>Content</th></tr>
 <tr><td>RAM <code>00</code></td><td>Internal counter, 0-255 continuously</td></tr>
 <tr><td>RAM <code>19</code></td><td>Likely the power level in use: <code>90</code> Off, 1 Pellet Loading, 2 Working at power 2</td></tr>
 <tr><td>RAM <code>36</code></td><td>Likely the smoke fan speed requested (<code>37</code> the actual one): 0 Off, about 200 in Pellet Loading</td></tr>
 <tr><td>RAM <code>9B</code>-<code>B2</code>, <code>BD</code>-<code>C8</code></td><td>Text shown on the stove display, ASCII, scrolling (<code>OFF</code>, "CARICA PELLET" read in pieces)</td></tr>
-<tr><td>EEPROM <code>F8</code>-<code>FD</code></td><td>Clock to set: day of week (1 Monday), hours, minutes, day, month, year - 2000, in BCD (<code>13</code> = 13)</td></tr>
 </table></div>
 
 <h2 id="verified">Verified on the stove</h2>
@@ -278,6 +286,13 @@ the stove display</li>
 <code>5A</code>/<code>5B</code>, <code>63</code>/<code>64</code>, <code>6C</code>/<code>6D</code>, a slot every 9 bytes
 as in the map above</li>
 <li>EEPROM <code>F8</code>-<code>FD</code> = <code>02 09 13 13 10 26</code>: the clock in BCD</li>
+<li>Clock set from the panel to 12:40 with the stove 30 minutes ahead: the stove display showed 12:41 right after, the
+RAM clock <code>65</code>-<code>6B</code> reached 12:42 about two minutes later (<code>03 02 0C 2A 0D 0A 1A</code>)</li>
+<li>Daily program <code>47</code>-<code>4B</code> = <code>00 00 90 90 00</code>: off, slot 1 00:00-off, slot 2 off-00:00,
+as on the stove display</li>
+<li>Weekly program set on the stove display, then read: slot 2 <code>5A</code>-<code>62</code> =
+<code>2D 3C 00 00 01 01 01 00 01</code> (07:30-10:00, Wednesday, Thursday, Friday, Sunday), slot 3 <code>63</code>-<code>6B</code> =
+<code>30 39 00 00 00 00 00 00 01</code> (08:00-09:30, Sunday): a slot every 9 bytes, days from Monday to Sunday</li>
 </ul></div>
 <p>RAM dump and three more reads 20 s apart with the stove in Pellet Loading (state RAM <code>21</code> = 2):</p>
 <div class="card"><ul>
@@ -324,10 +339,10 @@ sources) differ from this stove:</p>
 
 <h2 id="polling">Polling</h2>
 <p>One request every 200 ms (<code>SERIAL_MESSAGE_DELAY</code>).</p>
-<p><strong>Main page:</strong> indexes 0-15, with the stove state every other request, then a 2 s pause
+<p><strong>Main page:</strong> indexes 0-16, with the stove state every other request, then a 2 s pause
 (<code>SERIAL_SESSION_DELAY</code>). One round, about 8 s; the stove date and time is shown at its end:</p>
-<pre>01 21 0D 21 34 21 37 21 5A 21 65 21 66 21 67 21 68 21 69 21 6A 21 6B 21 7D 21 7F 21 4C 21</pre>
-<p><strong>Chrono page:</strong> chrono on/off and all the chrono programs in order (indexes 15-62,
+<pre>01 21 0D 21 34 21 37 21 5A 21 19 21 65 21 66 21 67 21 68 21 69 21 6A 21 6B 21 7D 21 7F 21 4C 21</pre>
+<p><strong>Chrono page:</strong> chrono on/off and all the chrono programs in order (indexes 16-63,
 <code>4C</code>, then <code>42</code>-<code>74</code>), then a 2 s pause; about 12 s per round.</p>
 <p>An invalid reply is followed by one more read of the same parameter at the next tick, without moving the
 sequence on.</p>
