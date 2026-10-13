@@ -171,8 +171,9 @@ smoke temperature in RAM and a chrono time in EEPROM).</p>
 (<code>Tmo</code>) and read again once, like an invalid reply. A reply with the echo only (2 bytes) means the stove
 board did not answer (<code>Err</code>).</p>
 <p>Top bar counters: <code>Tx</code> requests sent, <code>Rx</code> valid replies, <code>Err</code> replies with a
-wrong length or echo, <code>Chk</code> replies with a wrong checksum, <code>Tmo</code> requests without any reply.
-On this stove about 7 % of the requests got no reply during Ignition (2026-10-13), none with the stove Off.</p>
+wrong length or echo, <code>Chk</code> replies with a wrong checksum, <code>Tmo</code> requests without any reply;
+<code>Tx</code> = <code>Rx</code> + <code>Err</code> + <code>Chk</code> + <code>Tmo</code>. On this stove a full start and stop
+cycle had no error and no timeout (2026-10-13).</p>
 
 <h2 id="states">Stove states</h2>
 <p>RAM <code>21</code>, read and written. On = write 1 (Starting), Off = write 6 (Final Cleaning), Reset after
@@ -291,8 +292,19 @@ as in the map above</li>
 <li>Smoke temperature RAM <code>5A</code>: 68-72 °C in Ignition, 119 °C in Working</li>
 <li>Smoke fan speed RAM <code>37</code>: about 2450 rpm in Ignition, 1980 rpm in Working</li>
 <li>RAM <code>19</code>: 1 in Pellet Loading, 2 in Working at power 2 (<code>90</code> Off)</li>
-<li>During Ignition about 7 % of the requests got no reply at all</li>
 </ul></div>
+<p>Start and stop cycle from the panel (2026-10-13, power 2), state changes from the log:</p>
+<div class="card scroll"><table>
+<tr><th>From</th><th>To</th><th>Duration</th></tr>
+<tr><td>Working</td><td>Final Cleaning (Off pressed, 6 written)</td><td></td></tr>
+<tr><td>Final Cleaning</td><td>Off</td><td>11 min 30 s</td></tr>
+<tr><td>Off</td><td>Starting (On pressed, 1 written)</td><td></td></tr>
+<tr><td>Starting</td><td>Pellet Loading</td><td>1 s</td></tr>
+<tr><td>Pellet Loading</td><td>Ignition</td><td>7 min 03 s</td></tr>
+<tr><td>Ignition</td><td>Working</td><td>3 min 07 s</td></tr>
+</table></div>
+<p>Switching off by writing 6 takes as long as the stove button (about 10 minutes): the infrared command used on
+some boards is not needed here. No error and no timeout in the whole cycle.</p>
 
 <h3 id="boards">Other Micronova boards</h3>
 <p>Other maps published for Micronova stoves (for example
@@ -306,7 +318,7 @@ sources) differ from this stove:</p>
 <tr><td>Weekly chrono</td><td><code>50</code> on/off, slots every 9 bytes from <code>51</code></td><td>slots every 10 bytes from <code>4D</code>, or a daily timer at <code>50</code>-<code>59</code> with power and setpoint per slot</td></tr>
 <tr><td>RAM <code>19</code></td><td>likely the power level in use (2 Working at power 2, <code>90</code> Off)</td><td>set power on some boards</td></tr>
 <tr><td>Display text</td><td>RAM <code>9B</code>-<code>B2</code>, <code>BD</code>-<code>C8</code>, scrolling</td><td>RAM <code>8D</code>-<code>9C</code></td></tr>
-<tr><td>Switch off</td><td>write 6 to RAM <code>21</code></td><td>some boards switch off slowly this way and use the infrared command (<code>5A</code> to RAM <code>58</code>, 10 times)</td></tr>
+<tr><td>Switch off</td><td>write 6 to RAM <code>21</code>: 11 min 30 s, as the stove button</td><td>some boards switch off slowly this way and use the infrared command (<code>5A</code> to RAM <code>58</code>, 10 times)</td></tr>
 </table></div>
 <p>Check a new stove model with <code>tools/stovedump</code> before trusting the map.</p>
 

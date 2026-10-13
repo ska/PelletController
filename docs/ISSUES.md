@@ -36,6 +36,7 @@ Severity:
 | 24 | [Invalid reply not read again](#24-invalid-reply-not-read-again) | Low | Fixed in 0.2.0 |
 | 25 | [Stove state read twice in a row](#25-stove-state-read-twice-in-a-row) | Low | Fixed in 0.2.0 |
 | 26 | [Lost replies not counted](#26-lost-replies-not-counted) | Low | Fixed in 0.2.0 |
+| 27 | [Rx misses valid replies](#27-rx-misses-valid-replies) | Low | Fixed in 0.2.1 |
 
 Suggested order: 20, 3, 1, 2, 4, 22, then the protocol (8, 9, 10).
 
@@ -363,6 +364,20 @@ parameter is read again once (as issue 24).
 
 `serialproto.cpp` (`checkReadTimeout`, `getStoveInfos`, `sendPendingWrite`)
 
-Found on the panel on 2026-10-13 during Ignition: `Tx 1091 Rx 1016 Err 0
-Chk 0`, 75 requests (about 7 %) without any reply, not even the echo,
-counted nowhere and not read again.
+A read without any reply was counted nowhere and not read again. The
+difference `Tx 1091 Rx 1016 Err 0 Chk 0` seen on the panel on 2026-10-13,
+first taken for lost replies, came from issue 27 (the chrono page had
+been opened): a full start and stop cycle measured later had no timeout
+at all.
+
+## 27. Rx misses valid replies
+
+Fixed in 0.2.1: every valid reply is counted in `Rx`, so `Tx` = `Rx` +
+`Err` + `Chk` + `Tmo` (plus the request in flight).
+
+`serialproto.cpp` (`processStoveReply`, `default` of the parameter switch)
+
+A valid reply to a parameter the panel does not use (most of the chrono
+page: daily and weekly programs) was taken back from `Rx`
+(`m_rxMessages--`): on the chrono page `Rx` fell behind `Tx` by about 42
+per round with no error, which looked like lost replies (issue 26).

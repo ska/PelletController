@@ -324,6 +324,8 @@ void SerialProto::processStoveReply()
                 break;
 
             case ramParam(stoveStateAddr ):
+                if(val != m_stoveState)
+                    qInfo() << "Stove state:" << m_stoveState << "->" << val;
                 m_stoveState = val;
                 //Stato fuori tabella (scheda stufa piu' recente o risposta rumorosa): niente at() fuori range
                 emit updateStoveState(m_stoveState, (m_stoveState < m_stoveStateStr.size())
@@ -544,14 +546,7 @@ void SerialProto::processStoveReply()
 #endif
 
             default:
-#if 0
-                qWarning() << "Unknow message";
-                qDebug() << QString("Resp: Chk: %1 - val: %2 - param: %3").arg(checksum, 0, 16)
-                                .arg(val, 0, 16)
-                                .arg(param, 0, 16);
-                //se il messaggio non e' parsato lo rollo indietro
-#endif
-                m_rxMessages--;
+                //Valid reply to a parameter not used by the panel: still counted in Rx (issue 27)
                 break;
         }
     } else {

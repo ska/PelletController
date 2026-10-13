@@ -108,9 +108,9 @@ answer (Err).
 
 The panel shows the counters in the top bar: `Tx` requests sent, `Rx`
 valid replies, `Err` replies with a wrong length or echo, `Chk` replies
-with a wrong checksum, `Tmo` requests without any reply. On this stove
-about 7 % of the requests got no reply during Ignition (2026-10-13),
-none with the stove Off.
+with a wrong checksum, `Tmo` requests without any reply; `Tx` = `Rx` +
+`Err` + `Chk` + `Tmo`. On this stove a full start and stop cycle had no
+error and no timeout (2026-10-13).
 
 ## Stove states
 
@@ -244,7 +244,22 @@ Ignition (state 3) and Working (state 4, power 2), three reads each:
 - Smoke temperature RAM `5A`: 68-72 °C in Ignition, 119 °C in Working
 - Smoke fan speed RAM `37`: about 2450 rpm in Ignition, 1980 rpm in Working
 - RAM `19`: 1 in Pellet Loading, 2 in Working at power 2 (`90` Off)
-- During Ignition about 7 % of the requests got no reply at all
+
+Start and stop cycle from the panel (2026-10-13, power 2), state changes
+from the log:
+
+| From | To | Duration |
+|---|---|---|
+| Working | Final Cleaning (Off pressed, 6 written) | |
+| Final Cleaning | Off | 11 min 30 s |
+| Off | Starting (On pressed, 1 written) | |
+| Starting | Pellet Loading | 1 s |
+| Pellet Loading | Ignition | 7 min 03 s |
+| Ignition | Working | 3 min 07 s |
+
+Switching off by writing 6 takes as long as the stove button (about 10
+minutes): the infrared command used on some boards is not needed here.
+No error and no timeout in the whole cycle.
 
 ### Other Micronova boards
 
@@ -260,7 +275,7 @@ sources) differ from this stove:
 | Weekly chrono | `50` on/off, slots every 9 bytes from `51` | slots every 10 bytes from `4D`, or a daily timer at `50`-`59` with power and setpoint per slot |
 | RAM `19` | likely the power level in use (2 Working at power 2, `90` Off) | set power on some boards |
 | Display text | RAM `9B`-`B2`, `BD`-`C8`, scrolling | RAM `8D`-`9C` |
-| Switch off | write 6 to RAM `21` | some boards switch off slowly this way and use the infrared command (`5A` to RAM `58`, 10 times) |
+| Switch off | write 6 to RAM `21`: 11 min 30 s, as the stove button | some boards switch off slowly this way and use the infrared command (`5A` to RAM `58`, 10 times) |
 
 Check a new stove model with `tools/stovedump` before trusting the map.
 

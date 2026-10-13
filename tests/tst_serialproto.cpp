@@ -206,6 +206,7 @@ private slots:
     /* Chrono page: chrono on/off, then 42-74 in order, last one included (issue 6) */
     void chronoRound()
     {
+        QSignalSpy st(m_proto, SIGNAL(updateStats(quint32,quint32,quint32,quint32,quint32)));
         start(true);
         QTRY_VERIFY_WITH_TIMEOUT(m_sim->requests().size() >= 48, 13000);
         QStringList expected { "4c" };
@@ -213,6 +214,8 @@ private slots:
             if(a <= 0x4b || a >= 0x50)
                 expected << QString("%1").arg(a, 2, 16, QChar('0'));
         QCOMPARE(sequence(48), expected.join(' '));
+        //Every valid reply counted, also for the parameters the panel does not use (issue 27)
+        QVERIFY(stats(st)[0] - stats(st)[1] <= 1);
     }
 
     /* Flame power from the stove while working, 0 when Off (issue 11) */
