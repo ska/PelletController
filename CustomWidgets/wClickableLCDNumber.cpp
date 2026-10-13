@@ -2,7 +2,9 @@
 
 wClickableLCDNumber::wClickableLCDNumber(QWidget *parent)
     : QLCDNumber(parent)
+    , m_tensOfMins(0)
 {
+    display( QTime(0, 0).toString("hh:mm") );
 }
 
 wClickableLCDNumber::~wClickableLCDNumber()

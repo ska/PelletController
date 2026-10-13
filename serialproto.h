@@ -18,10 +18,20 @@
 #define SERIAL_RX_IDLE_TIMEOUT  (SERIAL_MESSAGE_DELAY/2)    //Linea muta per questo tempo = risposta completa
 #define SERIAL_WRITE_DELAY      (150)                       //Attesa prima di una scrittura
 #define SERIAL_WRITE_TIMEOUT    (SERIAL_MESSAGE_DELAY*3)    //Attesa massima risposta a scrittura
+#define SERIAL_WRITE_ATTEMPTS   (2)                         //Write sent again once if not confirmed
+#define SERIAL_REOPEN_DELAY     (SERIAL_MESSAGE_DELAY*15)   //Port not open or lost: open it again after 3 s
+#define SERIAL_NO_REPLY_TIMEOUT (SERIAL_MESSAGE_DELAY*50)   //No valid reply for 10 s: stove not answering
+#define SERIAL_PORT_DEFAULT     "/dev/ttyUSB0"
+
+/* Setpoint -/+ range, in half degrees (5.0 - 30.0 C), and power range */
+#define SETPOINT_MIN_RAW        (5*2)
+#define SETPOINT_MAX_RAW        (30*2)
+#define POWER_MIN               (1)
+#define POWER_MAX               (5)
 
 #define ramParam(param)         (((quint16)ramBank << 8) | param)
 #define eepromParam(param)      (((quint16)eepromBank << 8) | param)
-#define requestsMapSize         ((sizeof(requestsMap)/sizeof(requestsMap[0]))-1) //Tolgo uno perchè all'interno della struttura ho una posizione "Fake"
+#define requestsMapSize         (sizeof(requestsMap)/sizeof(requestsMap[0]))
 /* Stove Definitions */
 #define readCmd                 0x00
 #define writeCmd                0x80
@@ -135,6 +145,14 @@ public:
         Alarm
     };
     Q_ENUM(StoveState)
+
+    /* Serial link as shown on the panel (issue 10) */
+    enum LinkState {
+        LinkOk = 0,                         //Port open, valid replies (or nothing known yet)
+        LinkPortClosed,                     //Port not open or lost, opened again every SERIAL_REOPEN_DELAY
+        LinkNoReply                         //Port open, no valid reply for SERIAL_NO_REPLY_TIMEOUT
+    };
+    Q_ENUM(LinkState)
     const QStringList m_stoveStateStr = {
         "Off",
         "Starting",
@@ -233,7 +251,7 @@ public:
         char    description[50];
         uint8_t offset;
         float scale;
-    } requestsMap[63] = {
+    } requestsMap[LastIndex] = {
         /*********/
         /* 00 */ramBank,    ambTempAddr,                "Temp. ambiente",                   0,  2.0,
         /* 01 */ramBank,    cochleaTurnsAddr,           "Ton di ON coclea",                 0,  0.1,
@@ -314,7 +332,7 @@ public:
     //static QObject* createSingletonInstance(QQmlEngine *engine,  QJSEngine *scriptEngine);
     //QList<serialPortStruct *> serialPortStructs();
     void setSerPort(const QString &serPortName);
-    void openSerPort();
+    bool openSerPort();
     void closeSerPort();
     void startSerLoop();
     void stopSerLoop();
@@ -328,6 +346,7 @@ public:
     void writeChronoEnable(bool val);
     void writeChronoWkeEnable(bool val);
     void writeChronoWke1On(quint8 val);
+    void writeChronoWke1Off(quint8 val);
     void setChronoSerialGet(bool newChronoSerialGet);
 
 private:
@@ -340,6 +359,10 @@ private:
     QTimer m_loopTimer;
     QTimer m_rxIdleTimer;
     QTimer m_writeTimer;
+    QTimer m_reopenTimer;
+    QTimer m_noReplyTimer;
+    bool m_loopEnabled;                     //Polling wanted: started when the port opens
+    LinkState m_linkState;
     QByteArray m_rxBuffer;
 
     struct PendingWrite {
@@ -347,28 +370,44 @@ private:
         quint8 value;
     };
     QQueue<PendingWrite> m_writeQueue;
+    PendingWrite m_writeCurrent;            //Write in flight, kept to verify the reply and retry
+    QByteArray m_writeSent;                 //Its bytes, expected back as echo
+    QByteArray m_readSent;                  //Last read request, expected back as echo
+    quint8 m_writeAttempts;
     bool m_writeInFlight;
+    bool m_readRetryPending;                //Reply not valid: read the same parameter again once
+    bool m_readRetried;
     quint8 m_state, m_previousState, m_nextState;
 
     quint8 m_stoveState, m_smokeTemp, m_flamePower, m_setPower, m_smokeFanSpeed;
+    quint8 m_setTempRaw;                    //Setpoint in half degrees, as on the stove
+    bool m_setTempRead, m_setPowerRead;     //-/+ ignored until the value has been read
     quint16 m_ambTempDC, m_setTempDC;
-    quint32 m_txMessages, m_rxMessages, m_rxErrors;
+    quint32 m_txMessages, m_rxMessages, m_rxErrors, m_rxChecksumErrors, m_rxTimeouts;
+    bool m_readPending;                     //Read sent, nothing received yet
     float m_ambTemp, m_setTemp, m_tonCochlea;
     quint8 m_stoveYear, m_stoveMonth, m_stoveDay, m_stoveDoW,
         m_stoveHour, m_stoveMinutes, m_stoveSeconds;
     bool m_chronoSerialGet;
 
+    void resetLoop();
+    void checkReadTimeout();
+    void setLinkState(LinkState linkState);
     void readStoveInfo(quint8, quint8);
     void writeStoveCmd(RequestsIndex index, quint8 value);
     void sendData(QByteArray data);
+    void sendWrite();
+    bool writeConfirmed(const QByteArray &reply) const;
 signals:
+    void writeFailed(quint8 page, quint8 address, quint8 value);
+    void linkStateChanged(quint8 linkState);
     void serialPortStructsChanged();
     void serialOpened();
     void serialClosed();
     void serialError(QString);
     void loopStarted();
     void loopStopped();
-    void updateStats(quint32 txMessages, quint32 rxMessages, quint32 rxErrors);
+    void updateStats(quint32 txMessages, quint32 rxMessages, quint32 rxErrors, quint32 rxChecksumErrors, quint32 rxTimeouts);
     void updateAmbTemp(float ambTemp);
     void updateSetTemp(float setTemp);
     void updateStoveState(quint8 stoveState, QString stoveStateStr);
@@ -395,6 +434,7 @@ private slots:
     void sendPendingWrite();
     void getStoveInfos();
     void bytesWritten(qint64 bytes);
+    void onSerialError(QSerialPort::SerialPortError error);
 };
 
 #endif // SERIALPROTO_H

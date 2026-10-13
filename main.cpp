@@ -3,7 +3,9 @@
 
 #include <QFontDatabase>
 #include <QApplication>
+#include <QSettings>
 #include <QDebug>
+#include <QDir>
 
 int main(int argc, char *argv[])
 {
@@ -34,6 +36,12 @@ int main(int argc, char *argv[])
     wdtWorker->requestWork();
 #endif
 
+    /* Serial port from setting.ini in the working directory, [SERIAL] port
+     * (as AcquaThermoNet); read before MainWindow opens it */
+    QSettings settings(QDir::current().filePath("setting.ini"), QSettings::IniFormat);
+    SerialProto *s = SerialProto::getInstance();
+    s->setSerPort(settings.value("SERIAL/port", SERIAL_PORT_DEFAULT).toString());
+
     MainWindow w;
     int ret;
 
@@ -44,10 +52,6 @@ int main(int argc, char *argv[])
     w.setWindowFlags( w.windowFlags() | Qt::FramelessWindowHint | Qt::WindowStaysOnTopHint );
     w.showMaximized();
 #endif
-
-    SerialProto *s = SerialProto::getInstance();
-
-
 
     QFontDatabase::addApplicationFont(":/fonts/AdvancedDotDigital7ls.ttf");
     ret = a.exec();

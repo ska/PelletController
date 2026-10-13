@@ -5,7 +5,9 @@
 # Falls back to 0.0.0 without git, outside a checkout or with no tag
 # reachable (e.g. a shallow clone without tags).
 # Taken when qmake runs, like the git commit and the build time: rerun
-# qmake after a commit or a tag (Qt Creator: Build > Run qmake).
+# qmake after a commit or a tag (Qt Creator: Build > Run qmake; command
+# line: qmake -r, a plain qmake on the subdirs project keeps app's
+# version.h).
 # Generates version.h in the build dir from version.h.in (there \" is a
 # quote: qmake drops plain quotes in QMAKE_SUBSTITUTES).
 
@@ -32,7 +34,7 @@ isEmpty(PC_GIT_HASH) {
 
 PC_BUILD_TIMESTAMP = $$system(date -u \"+%Y-%m-%d %H:%M:%S UTC\")
 
-atn_version.input  = $$PC_SRC/version.h.in
-atn_version.output = $$OUT_PWD/version.h
-QMAKE_SUBSTITUTES += atn_version
+pc_version.input  = $$PC_SRC/version.h.in
+pc_version.output = $$OUT_PWD/version.h
+QMAKE_SUBSTITUTES += pc_version
 INCLUDEPATH += $$OUT_PWD

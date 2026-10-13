@@ -7,7 +7,11 @@
 #   app            the application -> <build>/bin_<arch>/PelletController
 #
 # Optional, qmake arguments:
-#   CONFIG+=tools     GUI screenshot tool (tools/guishot), desktop only
+#   CONFIG+=tests     unit tests -> <build>/tests/tests (stove simulator,
+#                     Linux, no stove needed)
+#   CONFIG+=tools     stove simulator (tools/stovesim), Linux, and read
+#                     only dump of the stove memory (tools/stovedump),
+#                     also ARM
 #   CONFIG+=designer  Qt Designer plugin with the custom widgets
 #                     (CustomWidgets/designer, make install)
 
@@ -16,10 +20,16 @@ TEMPLATE = subdirs
 SUBDIRS += ThirdParty CustomWidgets app
 app.depends = ThirdParty CustomWidgets
 
+CONFIG(tests) {
+    SUBDIRS += tests
+    tests.depends = ThirdParty
+}
+
 CONFIG(tools) {
-    SUBDIRS += guishot
-    guishot.subdir = tools/guishot
-    guishot.depends = ThirdParty CustomWidgets
+    SUBDIRS += stovesim stovedump
+    stovesim.subdir = tools/stovesim
+    stovedump.subdir = tools/stovedump
+    stovedump.depends = ThirdParty
 }
 
 CONFIG(designer) {

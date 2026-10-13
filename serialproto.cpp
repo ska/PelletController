@@ -5,11 +5,19 @@ SerialProto *SerialProto::instance = nullptr;
 SerialProto::SerialProto(QObject *parent)
     : QObject{parent}
 {
-    m_selSerial = "";
+    m_selSerial = SERIAL_PORT_DEFAULT;
+    m_loopEnabled = false;
+    m_linkState = LinkOk;
     m_state = m_previousState = m_nextState = 0;
     m_stoveState = m_smokeTemp = m_flamePower = m_setPower = m_smokeFanSpeed = 0;
     m_ambTempDC = m_setTempDC = 0;
-    m_txMessages = m_rxMessages = m_rxErrors = 0;
+    m_setTempRaw = 0;
+    m_setTempRead = m_setPowerRead = false;
+    m_txMessages = m_rxMessages = m_rxErrors = m_rxChecksumErrors = m_rxTimeouts = 0;
+    m_readPending = false;
+    m_writeAttempts = 0;
+    m_writeCurrent = {};
+    m_readRetryPending = m_readRetried = false;
     m_ambTemp = m_setTemp = m_tonCochlea = 0.0;
     m_stoveYear = m_stoveMonth = m_stoveDay = m_stoveDoW = m_stoveHour = m_stoveMinutes = m_stoveSeconds = 0;
     m_chronoSerialGet = false;
@@ -31,9 +39,14 @@ SerialProto::SerialProto(QObject *parent)
 #endif
     m_rxIdleTimer.setSingleShot(true);
     m_writeTimer.setSingleShot(true);
+    m_reopenTimer.setSingleShot(true);
+    m_noReplyTimer.setSingleShot(true);
 
     connect(&m_serial, &QSerialPort::readyRead, this, &SerialProto::onReadyRead);
     connect(&m_serial, &QSerialPort::bytesWritten, this, &SerialProto::bytesWritten);
+    connect(&m_serial, &QSerialPort::errorOccurred, this, &SerialProto::onSerialError);
+    connect(&m_reopenTimer, &QTimer::timeout, this, &SerialProto::openSerPort);
+    connect(&m_noReplyTimer, &QTimer::timeout, this, [this]{ setLinkState(LinkNoReply); });
     connect(&m_loopTimer, SIGNAL(timeout()), this, SLOT(getStoveInfos()));
     connect(&m_rxIdleTimer, &QTimer::timeout, this, &SerialProto::processStoveReply);
     connect(&m_writeTimer, &QTimer::timeout, this, &SerialProto::sendPendingWrite);
@@ -76,18 +89,13 @@ void SerialProto::setSerPort(const QString &serPortName)
     m_selSerial = serPortName;
 }
 
-void SerialProto::openSerPort()
+/* Opens the port; if it fails, tries again every SERIAL_REOPEN_DELAY until
+ * closeSerPort (issue 10). The polling starts here when already wanted. */
+bool SerialProto::openSerPort()
 {
-    qDebug() << Q_FUNC_INFO;
-#if 0
-    if( m_serialPortStructs.length() == 0)
-        return;
-
-    if(m_selSerial == "" && m_serialPortStructs.length()>0)
-        m_selSerial = m_serialPortStructs.at(0)->m_value;
-#else
-    setSerPort("/dev/ttyUSB0");
-#endif
+    m_reopenTimer.stop();
+    if(m_serial.isOpen())
+        return true;
 
     m_serial.setPortName(m_selSerial);
     m_serial.setBaudRate(QSerialPort::BaudRate::Baud1200);
@@ -101,20 +109,67 @@ void SerialProto::openSerPort()
         qInfo() << "openSerPort() open " << m_selSerial << "OK";
         emit serialError("Serial " +m_selSerial+ " open OK!");
         emit serialOpened();
-    } else {
-        qWarning() << "openSerPort() ERROR: open " << m_selSerial << "KO!";
-        emit serialError("Serial " +m_selSerial+ " open error!");
-        m_serial.close();
+        if(m_loopEnabled)
+        {
+            m_state = 0;
+            m_loopTimer.start(SERIAL_MESSAGE_DELAY);
+            m_noReplyTimer.start(SERIAL_NO_REPLY_TIMEOUT);
+        }
+        return true;
     }
+
+    //Logged once, not at every attempt
+    if(m_linkState != LinkPortClosed)
+        qWarning() << "openSerPort() ERROR: open " << m_selSerial << "KO:" << m_serial.errorString();
+    emit serialError("Serial " +m_selSerial+ " open error!");
+    m_serial.close();
+    setLinkState(LinkPortClosed);
+    m_reopenTimer.start(SERIAL_REOPEN_DELAY);
+    return false;
 }
 
 void SerialProto::closeSerPort()
 {
     qDebug() << Q_FUNC_INFO;
     stopSerLoop();
+    m_reopenTimer.stop();
     if(m_serial.isOpen())
         m_serial.close();
     emit serialClosed();
+}
+
+/* Port lost (USB adapter unplugged): closed out of the error signal, then
+ * opened again by the reopen timer, the polling goes on by itself */
+void SerialProto::onSerialError(QSerialPort::SerialPortError error)
+{
+    if(error != QSerialPort::ResourceError && error != QSerialPort::ReadError
+       && error != QSerialPort::WriteError && error != QSerialPort::UnknownError)
+        return;
+
+    qWarning() << "Serial error" << error << m_serial.errorString();
+    QTimer::singleShot(0, this, [this]{
+        if(!m_serial.isOpen())
+            return;
+        resetLoop();
+        m_serial.close();
+        //Values read again before -/+ works (the stove may have changed meanwhile)
+        m_setTempRead = m_setPowerRead = false;
+        emit serialClosed();
+        setLinkState(LinkPortClosed);
+        m_reopenTimer.start(SERIAL_REOPEN_DELAY);
+    });
+}
+
+void SerialProto::setLinkState(LinkState linkState)
+{
+    if(linkState == m_linkState)
+        return;
+    m_linkState = linkState;
+    if(LinkOk == linkState)
+        qInfo() << "Stove link OK";
+    else
+        qWarning() << "Stove link:" << (LinkPortClosed == linkState ? "port closed" : "no reply");
+    emit linkStateChanged(linkState);
 }
 
 void SerialProto::bytesWritten(qint64 bytes)
@@ -135,23 +190,39 @@ void SerialProto::sendData(QByteArray data)
     }
 }
 
+/* Polling wanted: runs while the port is open, restarted when it opens again */
 void SerialProto::startSerLoop()
 {
-    m_loopTimer.start(SERIAL_MESSAGE_DELAY);
+    m_loopEnabled = true;
     m_txMessages = m_rxMessages = 0;
+    if(m_serial.isOpen())
+    {
+        m_loopTimer.start(SERIAL_MESSAGE_DELAY);
+        m_noReplyTimer.start(SERIAL_NO_REPLY_TIMEOUT);
+    }
     emit loopStarted();
 }
 
 void SerialProto::stopSerLoop()
 {
+    m_loopEnabled = false;
+    resetLoop();
+    emit loopStopped();
+}
+
+void SerialProto::resetLoop()
+{
     m_loopTimer.stop();
+    m_noReplyTimer.stop();
     m_rxIdleTimer.stop();
     m_writeTimer.stop();
     m_rxBuffer.clear();
     m_writeQueue.clear();
     m_writeInFlight = false;
+    m_writeAttempts = 0;
+    m_readRetryPending = m_readRetried = false;
+    m_readPending = false;
     m_state = 0;
-    emit loopStopped();
 }
 
 void SerialProto::onReadyRead()
@@ -165,11 +236,28 @@ void SerialProto::processStoveReply()
 {
     QByteArray stoveRxData = m_rxBuffer;
     m_rxBuffer.clear();
+    m_readPending = false;
+    bool valid = false;
 
     if(m_writeInFlight)
     {
-        //Scrittura conclusa (risposta o timeout): prossima scrittura o riavvio poll lettura info
+        //Scrittura conclusa (risposta o timeout): verifica, poi prossima scrittura o riavvio poll lettura info
         m_writeInFlight = false;
+        const bool confirmed = writeConfirmed(stoveRxData);
+        if(!confirmed)
+        {
+            if(m_writeAttempts < SERIAL_WRITE_ATTEMPTS)
+            {
+                qWarning() << "Write not confirmed, sending it again:" << stoveRxData.toHex(' ');
+                m_writeTimer.start(SERIAL_WRITE_DELAY);
+                return;
+            }
+            qWarning() << "Write failed:" << m_writeSent.toHex(' ') << "reply" << stoveRxData.toHex(' ');
+            emit writeFailed(requestsMap[m_writeCurrent.index].page,
+                             requestsMap[m_writeCurrent.index].address,
+                             m_writeCurrent.value);
+        }
+        m_writeAttempts = 0;
         if(!m_writeQueue.isEmpty())
         {
             m_writeTimer.start(SERIAL_WRITE_DELAY);
@@ -177,32 +265,29 @@ void SerialProto::processStoveReply()
             m_state = 0;
             m_loopTimer.start(SERIAL_MESSAGE_DELAY*3);
         }
-    }
+        if(!confirmed)
+            return;
 
-    quint8 dtLen = stoveRxData.length();
+        //Risposta a scrittura confermata: tolgo l'eco dei 4 byte inviati e 0x80
+        stoveRxData.remove(0,4);
+        stoveRxData[0] = (quint8)(stoveRxData[0] - writeCmd);
+        valid = true;
+    }
+    else if(stoveRxData.length() == 4 && stoveRxData.startsWith(m_readSent))
+    {
+        //Risposta a lettura: tolgo l'eco della richiesta, controllata (issue 8)
+        stoveRxData.remove(0,2);
+        valid = true;
+    }
 
     //for(int i=0; i<stoveRxData.length(); i++)
     //    qDebug() << "recvData: " << QString("%1").arg((quint8)stoveRxData.at(i) , 0, 16);
 
-    if(dtLen == 6)
-    {
-        //Risposta a scrittura
-        //Rimuovo i messavvi inviati ed in echo
-        stoveRxData.remove(0,4);
-        stoveRxData[0] = (quint8)(stoveRxData[0] - writeCmd); //Tolgo 0x80
-        dtLen = 2;
-    }
-    if(dtLen == 4)
-    {
-        //Rimuovo i messavvi inviati ed in echo
-        stoveRxData.remove(0,2);
-        dtLen = 2;
-    }
-    if(dtLen==0)
+    if(stoveRxData.isEmpty())
     {
         return;
     }
-    else if (dtLen == 2)
+    else if (valid)
     {
         quint8 val = stoveRxData[1];
         quint8 checksum = stoveRxData[0];
@@ -214,10 +299,15 @@ void SerialProto::processStoveReply()
             qDebug() << QString("Resp: Chk: %1 - val: %2 - param: %3").arg(checksum, 0, 16)
                             .arg(val, 0, 16)
                             .arg(param, 0, 16);
+            m_rxChecksumErrors++;
+            m_readRetryPending = !m_readRetried;
+            emit updateStats(m_txMessages, m_rxMessages, m_rxErrors, m_rxChecksumErrors, m_rxTimeouts);
             return;
         }
 
         m_rxMessages++;
+        m_noReplyTimer.start(SERIAL_NO_REPLY_TIMEOUT);
+        setLinkState(LinkOk);
 
         quint16 bank_param = (((quint16)bank << 8) | param);
         switch (bank_param)
@@ -235,20 +325,18 @@ void SerialProto::processStoveReply()
 
             case ramParam(stoveStateAddr ):
                 m_stoveState = val;
-                emit updateStoveState(m_stoveState, m_stoveStateStr.at(m_stoveState));
+                //Stato fuori tabella (scheda stufa piu' recente o risposta rumorosa): niente at() fuori range
+                emit updateStoveState(m_stoveState, (m_stoveState < m_stoveStateStr.size())
+                                                        ? m_stoveStateStr.at(m_stoveState)
+                                                        : QString("Unknown (%1)").arg(m_stoveState));
                 break;
 
             case ramParam(flamePowerAddr ):
-                if (m_stoveState < 6)
-                {
-                    //From 0-16 to 10-100%
-                    if (m_stoveState > 0)
-                        m_flamePower = (((quint16)val*90)/16)+10;
-                }
+                //From 0-16 to 10-100%, 0 when Off or from Final Cleaning on (issue 11)
+                if (m_stoveState > Off && m_stoveState < FinalCleaning)
+                    m_flamePower = (((quint16)val*90)/16)+10;
                 else
-                {
                     m_flamePower = 0;
-                }
                 //qDebug() << "Resp: flamePowerAddr: " << m_flamePower;
                 break;
 
@@ -287,10 +375,13 @@ void SerialProto::processStoveReply()
             case eepromParam(tempSetAddr ):
                 m_setTemp = (float)val / 2;
                 m_setTempDC = (((quint16)val)*10)/2;
+                m_setTempRaw = val;
+                m_setTempRead = true;
                 emit updateSetTemp(m_setTemp);
                 break;
             case eepromParam(powerSetAddr ):
                 m_setPower = val;
+                m_setPowerRead = true;
                 //qDebug() << "Resp: powerSetAddr: " << m_setPower;
                 emit updatePower(m_setPower, m_flamePower);
                 break;
@@ -464,10 +555,12 @@ void SerialProto::processStoveReply()
                 break;
         }
     } else {
-        qWarning() << "Received: " << dtLen << "bytes";
+        //Lunghezza sbagliata o eco diversa dalla richiesta (solo eco = stufa muta)
+        qWarning() << "Invalid reply:" << stoveRxData.toHex(' ') << "to" << m_readSent.toHex(' ');
         m_rxErrors++;
+        m_readRetryPending = !m_readRetried;
     }
-    emit updateStats(m_txMessages, m_rxMessages, m_rxErrors);
+    emit updateStats(m_txMessages, m_rxMessages, m_rxErrors, m_rxChecksumErrors, m_rxTimeouts);
 }
 
 void SerialProto::getStoveInfos()
@@ -476,6 +569,18 @@ void SerialProto::getStoveInfos()
     /*Risposta in ricezione o scrittura in corso: riprovo al prossimo tick*/
     if(m_rxIdleTimer.isActive() || m_writeInFlight || m_writeTimer.isActive())
         return;
+
+    checkReadTimeout();
+
+    /*Risposta non valida o assente: rileggo subito lo stesso parametro, una volta sola, senza avanzare*/
+    if(m_readRetryPending)
+    {
+        m_readRetryPending = false;
+        m_readRetried = true;
+        readStoveInfo(requestsMap[m_previousState].page, requestsMap[m_previousState].address);
+        return;
+    }
+    m_readRetried = false;
 
     /*Ultimo address nella mappa mi serve per attendere arrivo ultimi dati prima di emit*/
     if(false == m_chronoSerialGet)
@@ -491,9 +596,9 @@ void SerialProto::getStoveInfos()
         if(m_state < requestsMapSize)
             readStoveInfo( requestsMap[m_state].page,  requestsMap[m_state].address );
 
-        /*Un giro si e uno no controllo lo stato */
+        /*Un giro si e uno no controllo lo stato (saltandolo nella sequenza dei parametri)*/
         if(m_state == stoveStateIndex)
-            m_state = m_nextState;
+            m_state = (m_nextState == stoveStateIndex) ? m_nextState+1 : m_nextState;
         else
             m_state = stoveStateIndex;
 
@@ -538,15 +643,34 @@ void SerialProto::getStoveInfos()
 
 void SerialProto::readStoveInfo(quint8 page, quint8 address)
 {
-    QByteArray data;
-    data.clear();
-    data.append((quint8)readCmd + (quint8)page);
-    data.append((quint8)address);
-    sendData(data);
+    m_readSent.clear();
+    m_readSent.append((quint8)readCmd + (quint8)page);
+    m_readSent.append((quint8)address);
+    sendData(m_readSent);
+    m_readPending = true;
+}
+
+/* The last read got no byte at all (not even the echo) before the next
+ * request: counted apart from the bad replies and read again once */
+void SerialProto::checkReadTimeout()
+{
+    if(!m_readPending)
+        return;
+    m_readPending = false;
+    m_rxTimeouts++;
+    m_readRetryPending = !m_readRetried;
+    qWarning() << "No reply to" << m_readSent.toHex(' ');
+    emit updateStats(m_txMessages, m_rxMessages, m_rxErrors, m_rxChecksumErrors, m_rxTimeouts);
 }
 
 void SerialProto::writeStoveCmd(RequestsIndex index, quint8 value)
 {
+    if(!m_serial.isOpen())
+    {
+        qWarning() << "Write dropped, serial port not open";
+        emit writeFailed(requestsMap[index].page, requestsMap[index].address, value);
+        return;
+    }
     m_loopTimer.stop();
     m_writeQueue.enqueue({index, value});
     //Aspetto eventuali messaggi in coda prima di scrivere
@@ -556,7 +680,7 @@ void SerialProto::writeStoveCmd(RequestsIndex index, quint8 value)
 
 void SerialProto::sendPendingWrite()
 {
-    if(m_writeQueue.isEmpty())
+    if(0 == m_writeAttempts && m_writeQueue.isEmpty())
         return;
 
     //Risposta di lettura ancora in arrivo: riprovo dopo
@@ -566,22 +690,44 @@ void SerialProto::sendPendingWrite()
         return;
     }
 
-    const PendingWrite w = m_writeQueue.dequeue();
-    const quint8 page    = requestsMap[w.index].page;
-    const quint8 address = requestsMap[w.index].address;
+    checkReadTimeout();
 
-    QByteArray data;
-    data.append((quint8)writeCmd + (quint8)page);
-    data.append((quint8)address);
-    data.append((quint8)w.value);
-    data.append((quint8)(writeCmd+page+address+w.value));
+    //Retry: same write again; otherwise the next one in the queue
+    if(0 == m_writeAttempts)
+        m_writeCurrent = m_writeQueue.dequeue();
+    sendWrite();
+}
+
+void SerialProto::sendWrite()
+{
+    const quint8 page    = requestsMap[m_writeCurrent.index].page;
+    const quint8 address = requestsMap[m_writeCurrent.index].address;
+    const quint8 value   = m_writeCurrent.value;
+
+    m_writeSent.clear();
+    m_writeSent.append((quint8)writeCmd + (quint8)page);
+    m_writeSent.append((quint8)address);
+    m_writeSent.append((quint8)value);
+    m_writeSent.append((quint8)(writeCmd+page+address+value));
 
     m_rxBuffer.clear();
-    m_previousState = w.index;
+    m_readRetryPending = false;               //The polling restarts after the write
+    m_previousState = m_writeCurrent.index;
     m_writeInFlight = true;
-    sendData(data);
+    m_writeAttempts++;
+    sendData(m_writeSent);
     //Se la stufa non risponde processStoveReply chiude comunque la scrittura
     m_rxIdleTimer.start(SERIAL_WRITE_TIMEOUT);
+}
+
+/* Write reply: the echo of the 4 bytes sent, then 0x80 + bank + address +
+ * value and the value written (issue 9) */
+bool SerialProto::writeConfirmed(const QByteArray &reply) const
+{
+    if(reply.length() != 6 || !reply.startsWith(m_writeSent))
+        return false;
+    return (quint8)reply.at(4) == (quint8)m_writeSent.at(3)
+        && (quint8)reply.at(5) == (quint8)m_writeSent.at(2);
 }
 
 void SerialProto::writeStoveStateOn()
@@ -599,28 +745,35 @@ void SerialProto::writeStoveStateOffForce()
     writeStoveCmd(stoveStateIndex, StoveState::Off);
 }
 
+/* -/+ step from the value read from the stove: ignored before the first
+ * read, kept inside POWER_MIN-POWER_MAX and SETPOINT_MIN_RAW-SETPOINT_MAX_RAW
+ * (a value outside the range moves to the nearest limit) */
 void SerialProto::writeStoveDecPower()
 {
-    if(m_setPower<=1)
+    if(!m_setPowerRead || m_setPower<=POWER_MIN)
         return;
-    writeStoveCmd(powerSetIndex, m_setPower-1);
+    writeStoveCmd(powerSetIndex, qMin(m_setPower-1, POWER_MAX));
 }
 
 void SerialProto::writeStoveIncPower()
 {
-    if(m_setPower>=5)
+    if(!m_setPowerRead || m_setPower>=POWER_MAX)
         return;
-    writeStoveCmd(powerSetIndex, m_setPower+1);
+    writeStoveCmd(powerSetIndex, qMax(m_setPower+1, POWER_MIN));
 }
 
 void SerialProto::writeStoveDecSetPoint()
 {
-    writeStoveCmd(tempSetIndex, ((m_setTemp*2)-1));
+    if(!m_setTempRead || m_setTempRaw<=SETPOINT_MIN_RAW)
+        return;
+    writeStoveCmd(tempSetIndex, qMin(m_setTempRaw-1, SETPOINT_MAX_RAW));
 }
 
 void SerialProto::writeStoveIncSetPoint()
 {
-    writeStoveCmd(tempSetIndex, ((m_setTemp*2)+1));
+    if(!m_setTempRead || m_setTempRaw>=SETPOINT_MAX_RAW)
+        return;
+    writeStoveCmd(tempSetIndex, qMax(m_setTempRaw+1, SETPOINT_MIN_RAW));
 }
 
 void SerialProto::writeChronoEnable(bool val)
@@ -636,4 +789,9 @@ void SerialProto::writeChronoWkeEnable(bool val)
 void SerialProto::writeChronoWke1On(quint8 val)
 {
     writeStoveCmd(chronoWkE_1_OnIndex, val);
+}
+
+void SerialProto::writeChronoWke1Off(quint8 val)
+{
+    writeStoveCmd(chronoWkE_1_OffIndex, val);
 }
