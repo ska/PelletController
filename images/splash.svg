@@ -1,0 +1,59 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 480" width="800" height="480">
+  <title>Pellet Controller</title>
+  <rect width="800" height="480" fill="#000000"/>
+  <g transform="translate(300,65)">
+  <defs>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E5E7EB"/>
+      <stop offset="1" stop-color="#7D858D"/>
+    </linearGradient>
+    <linearGradient id="flame" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#F59E0B"/>
+      <stop offset="0.5" stop-color="#F28C28"/>
+      <stop offset="1" stop-color="#E0485A"/>
+    </linearGradient>
+    <linearGradient id="core" x1="0" y1="1" x2="0" y2="0">
+      <stop offset="0" stop-color="#FDE68A"/>
+      <stop offset="1" stop-color="#F59E0B"/>
+    </linearGradient>
+    <linearGradient id="pellet" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#D9A066"/>
+      <stop offset="1" stop-color="#9C6A3A"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.5" cy="0.62" r="0.5">
+      <stop offset="0" stop-color="#F28C28" stop-opacity="0.40"/>
+      <stop offset="1" stop-color="#F28C28" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- flue pipe -->
+  <path d="M120 32 V8 H138 V32" fill="#0B1118" stroke="#C9CED3" stroke-width="6" stroke-linejoin="round"/>
+  <!-- stove body -->
+  <rect x="40" y="32" width="120" height="150" rx="16" fill="#0B1118" stroke="url(#steel)" stroke-width="8"/>
+  <!-- feet -->
+  <g stroke="#9CA3AF" stroke-width="7" stroke-linecap="round">
+    <line x1="58" y1="186" x2="58" y2="198"/>
+    <line x1="142" y1="186" x2="142" y2="198"/>
+  </g>
+  <!-- fire window with the flame -->
+  <rect x="58" y="50" width="84" height="84" rx="12" fill="#15181B" stroke="#4A525B" stroke-width="3"/>
+  <circle cx="100" cy="108" r="40" fill="url(#glow)"/>
+  <g transform="translate(100,130) scale(0.7) translate(-100,-172)">
+    <path d="M101 58 C 114 84 138 100 133 134 C 130 158 114 172 100 172 C 84 172 67 159 67 137
+             C 67 115 82 106 88 86 C 95 98 98 108 106 113 C 109 96 107 77 101 58 Z" fill="url(#flame)"/>
+    <path d="M102 112 C 110 126 120 134 117 150 C 115 161 108 167 100 167 C 91 167 84 160 84 150
+             C 84 139 92 134 95 124 C 98 130 100 134 104 136 C 105 128 105 120 102 112 Z" fill="url(#core)"/>
+  </g>
+  <!-- pellets -->
+  <g fill="url(#pellet)">
+    <rect x="62" y="152" width="22" height="10" rx="5" transform="rotate(-12 73 157)"/>
+    <rect x="89" y="150" width="22" height="10" rx="5" transform="rotate(8 100 155)"/>
+    <rect x="116" y="152" width="22" height="10" rx="5" transform="rotate(-6 127 157)"/>
+    <rect x="76" y="164" width="22" height="10" rx="5" transform="rotate(5 87 169)"/>
+    <rect x="103" y="164" width="22" height="10" rx="5" transform="rotate(-10 114 169)"/>
+  </g>
+  </g>
+  <text x="400" y="355" text-anchor="middle" font-family="Lato, 'DejaVu Sans', sans-serif" font-weight="700" font-size="54" letter-spacing="1">
+    <tspan fill="#FFFFFF">Pellet</tspan><tspan fill="#F28C28">Controller</tspan>
+  </text>
+  <text x="400" y="393" text-anchor="middle" font-family="Lato, 'DejaVu Sans', sans-serif" font-weight="300" font-size="19" fill="#9CA3AF" letter-spacing="3">PELLET STOVE PANEL</text>
+</svg>

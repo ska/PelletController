@@ -62,6 +62,7 @@ stove simulator (`tools/stovesim`).
 |---|---|
 | `*.cpp`, `*.h` | The application sources (pages built in code, no `.ui` forms) |
 | `qss/`, `icons/` | Style sheet and stroke icons, tinted at run time (`resources.qrc`) |
+| `images/` | Boot splash of the panel, 800x480 (`splash.svg`, `splash.png` rendered with headless Chromium) |
 | `app/app.pro` | Application project, sources taken from the root |
 | `CustomWidgets/` | Custom widgets, static library |
 | `ThirdParty/` | External modules as git submodules: Qt Serial Port and Qt MQTT 5.13.2, built static |

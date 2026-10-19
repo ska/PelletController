@@ -213,7 +213,11 @@ minutes after a clock set the panel shows the time written, running
 (`CLOCK_SET_HOLD_MS`).
 
 Setpoint and power -/+ do nothing until the value has been read from the
-stove (and again after the serial port was lost).
+stove (and again after the serial port was lost). Each step starts from
+the last write of that parameter still queued or not confirmed yet,
+otherwise from the value read (`stepBase`): taps faster than a write and
+its reply (about 250 ms) all count, and the limits apply to the queued
+value too.
 
 ### Other known locations
 

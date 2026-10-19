@@ -259,7 +259,9 @@ through <code>writeClock</code> (six writes, not polled).</p>
 old time for one or two minutes: for two minutes after a clock set the panel shows the time written, running
 (<code>CLOCK_SET_HOLD_MS</code>).</p>
 <p>Setpoint and power -/+ do nothing until the value has been read from the stove (and again after the serial
-port was lost).</p>
+port was lost). Each step starts from the last write of that parameter still queued or not confirmed yet,
+otherwise from the value read (<code>stepBase</code>): taps faster than a write and its reply (about 250 ms) all
+count, and the limits apply to the queued value too.</p>
 
 <h3 id="other">Other known locations</h3>
 <p>Not used by the panel yet, except RAM <code>19</code> (shown on the diagnostic page).</p>
