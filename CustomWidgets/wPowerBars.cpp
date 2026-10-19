@@ -10,7 +10,10 @@ wPowerBars::wPowerBars(QWidget *parent)
 
 void wPowerBars::setLevel(int level)
 {
-    m_level = qBound(0, level, m_maximum);
+    level = qBound(0, level, m_maximum);
+    if(level == m_level)
+        return;                             //Read again, unchanged
+    m_level = level;
     update();
 }
 
@@ -21,7 +24,7 @@ void wPowerBars::setMaximum(int maximum)
     update();
 }
 
-void wPowerBars::setActiveColor(const QColor &c)    { m_activeColor = c; update(); }
+void wPowerBars::setActiveColor(const QColor &c)    { if(c != m_activeColor) { m_activeColor = c; update(); } }
 void wPowerBars::setInactiveColor(const QColor &c)  { m_inactiveColor = c; update(); }
 
 void wPowerBars::paintEvent(QPaintEvent *)

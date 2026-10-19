@@ -9,7 +9,9 @@
 #include <QApplication>
 #include <QEvent>
 #include <QFile>
+#include <QKeyEvent>
 #include <QMessageBox>
+#include <QMouseEvent>
 #include <QStackedWidget>
 #include <QTimer>
 
@@ -30,6 +32,7 @@ MainWindow::MainWindow(HomeAssistant *ha, QWidget *parent)
     m_chronoPage = new ChronoPage(m_proto, m_stack);
     m_diagPage = new DiagPage(m_proto, m_stack);
     m_diagPage->setHomeAssistant(ha);
+    m_mainPage->setHomeAssistant(ha);
     m_stack->addWidget(m_mainPage);
     m_stack->addWidget(m_chronoPage);
     m_stack->addWidget(m_diagPage);
@@ -46,7 +49,7 @@ MainWindow::MainWindow(HomeAssistant *ha, QWidget *parent)
     connect(m_idleTimer, &QTimer::timeout, this, &MainWindow::showMain);
     connect(m_proto, &SerialProto::writeFailed, this, &MainWindow::showWriteFailed);
 
-    //Any touch while another page is shown keeps it open
+    //Any touch while another page is shown keeps it open; F1-F6 = keys 1-6
     qApp->installEventFilter(this);
 
     m_proto->openSerPort();
@@ -55,6 +58,49 @@ MainWindow::MainWindow(HomeAssistant *ha, QWidget *parent)
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 {
+    /* The touch screen reports its last row and column as 480 and 800, one
+     * pixel outside the window: a tap on the bottom edge (the key bar) would
+     * reach no widget. Moved inside, to the widget under it; Qt then sends
+     * the rest of that touch here (it grabbed the press): to the same
+     * widget until the release, inside the window or not. */
+    if(watched == this && (event->type() == QEvent::MouseButtonPress
+                           || event->type() == QEvent::MouseButtonRelease
+                           || event->type() == QEvent::MouseButtonDblClick
+                           || event->type() == QEvent::MouseMove))
+    {
+        const QMouseEvent *m = static_cast<QMouseEvent *>(event);
+        const bool press = (event->type() == QEvent::MouseButtonPress
+                            || event->type() == QEvent::MouseButtonDblClick);
+        const QPoint in(qBound(0, m->pos().x(), width() - 1), qBound(0, m->pos().y(), height() - 1));
+        if(press && in != m->pos())
+            m_edgeTarget = childAt(in);
+        if(m_edgeTarget)
+        {
+            QWidget *target = m_edgeTarget;
+            if(event->type() == QEvent::MouseButtonRelease)
+                m_edgeTarget = nullptr;
+            QMouseEvent moved(m->type(), target->mapFrom(this, in), in, mapToGlobal(in),
+                              m->button(), m->buttons(), m->modifiers(), m->source());
+            QApplication::sendEvent(target, &moved);
+            return true;
+        }
+    }
+    /* Keys under the screen (evdev F1-F6): only the main page uses them,
+     * not under a dialog; a release always goes, to end a hold */
+    if(event->type() == QEvent::KeyPress || event->type() == QEvent::KeyRelease)
+    {
+        const int key = static_cast<QKeyEvent *>(event)->key();
+        if(key >= Qt::Key_F1 && key <= Qt::Key_F6)
+        {
+            const bool press = (event->type() == QEvent::KeyPress);
+            if(!static_cast<QKeyEvent *>(event)->isAutoRepeat()
+               && (!press || (m_stack->currentWidget() == m_mainPage
+                              && !QApplication::activeModalWidget()
+                              && !QApplication::activePopupWidget())))
+                m_mainPage->keyEvent(key - Qt::Key_F1 + 1, press);
+            return true;
+        }
+    }
     if(m_idleTimer->isActive()
        && (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::TouchBegin))
         m_idleTimer->start();

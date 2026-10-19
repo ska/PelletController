@@ -1,0 +1,9 @@
+<jmlauncher>
+<package>
+  <name>PelletController</name>
+  <installationFolder>PelletController</installationFolder>
+  <version>@VERSION@</version>
+  <executeAsRoot>@EXECUTE_AS_ROOT@</executeAsRoot>
+  <background>@BACKGROUND@</background>
+</package>
+</jmlauncher>

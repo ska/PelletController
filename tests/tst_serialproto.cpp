@@ -187,6 +187,33 @@ private slots:
         QCOMPARE(int(m_sim->eeprom(0x7F)), 2);
     }
 
+    /* Taps faster than a write and its reply: every step counts, from the
+     * value still being written; the limit holds for the queued value too */
+    void fastSteps()
+    {
+        QSignalSpy power(m_proto, SIGNAL(updatePower(quint8,quint8)));
+        QSignalSpy set(m_proto, SIGNAL(updateSetTemp(float)));
+        QSignalSpy failed(m_proto, SIGNAL(writeFailed(quint8,quint8,quint8)));
+        QSignalSpy writes(m_sim, &StoveSim::writeReceived);
+        start();
+        QTRY_VERIFY_WITH_TIMEOUT(!power.isEmpty() && !set.isEmpty(), 8000);
+        //Power 2: four + taps, the 4th over the maximum
+        m_proto->writeStoveIncPower();
+        QTest::qWait(50);
+        m_proto->writeStoveIncPower();                  //Queued behind the first
+        QTest::qWait(200);
+        m_proto->writeStoveIncPower();                  //First one in flight
+        m_proto->writeStoveIncPower();                  //Already 5 queued: ignored
+        QTRY_COMPARE_WITH_TIMEOUT(int(m_sim->eeprom(0x7F)), 5, 3000);
+        //Setpoint 22.5 C: two - taps in a row
+        m_proto->writeStoveDecSetPoint();
+        m_proto->writeStoveDecSetPoint();
+        QTRY_COMPARE_WITH_TIMEOUT(int(m_sim->eeprom(0x7D)), 43, 3000);
+        QTest::qWait(1000);
+        QCOMPARE(writes.count(), 5);
+        QCOMPARE(failed.count(), 0);
+    }
+
     /* Setpoint at 30.0 C: + ignored, - written */
     void setpointLimits()
     {

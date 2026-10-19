@@ -20,14 +20,17 @@ void wDial::setMinimum(double v)                { m_minimum = v; update(); }
 void wDial::setMaximum(double v)                { m_maximum = v; update(); }
 void wDial::setCaption(const QString &caption)  { m_caption = caption; update(); }
 void wDial::setTrackColor(const QColor &c)      { m_trackColor = c; update(); }
-void wDial::setArcColor(const QColor &c)        { m_arcColor = c; update(); }
+void wDial::setArcColor(const QColor &c)        { if(c != m_arcColor) { m_arcColor = c; update(); } }
 void wDial::setMarkerColor(const QColor &c)     { m_markerColor = c; update(); }
 void wDial::setTextColor(const QColor &c)       { m_textColor = c; update(); }
 void wDial::setMutedColor(const QColor &c)      { m_mutedColor = c; update(); }
 void wDial::setHoleColor(const QColor &c)       { m_holeColor = c; update(); }
 
+/* The stove sends every value at each read: repaint only on a change */
 void wDial::setValue(double value)
 {
+    if(m_hasValue && qFuzzyCompare(value, m_value))
+        return;
     m_value = value;
     m_hasValue = true;
     update();
@@ -35,6 +38,8 @@ void wDial::setValue(double value)
 
 void wDial::setSetpoint(double setpoint)
 {
+    if(m_hasSetpoint && qFuzzyCompare(setpoint, m_setpoint))
+        return;
     m_setpoint = setpoint;
     m_hasSetpoint = true;
     update();

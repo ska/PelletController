@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "serialproto.h"
 #include "homeassistant.h"
+#include "singleinstance.h"
 #include "common.h"
 
 #include <QApplication>
@@ -8,20 +9,103 @@
 #include <QDebug>
 #include <QDir>
 #include <QElapsedTimer>
+#include <QFile>
+#include <QSocketNotifier>
+
+#include <csignal>
+#include <cstdio>
+#include <cstring>
+#include <sys/socket.h>
+#include <unistd.h>
+
+/*
+ * Unix signals (SIGTERM/SIGINT, the package stop.sh): the handler only
+ * writes to a socketpair, the Qt side reads it and quits the event loop, so
+ * the normal shutdown runs (MQTT offline, port closed) and the exit status
+ * is 0. As AcquaThermoNet and RoomSense; see the Qt doc "Calling Qt
+ * Functions From Unix Signal Handlers".
+ */
+static int sigFd[2];
+
+static void unixSignalHandler(int)
+{
+    char a = 1;
+    ssize_t r = ::write(sigFd[0], &a, sizeof(a));
+    (void) r;
+}
+
+static bool setupUnixSignals()
+{
+    if(::socketpair(AF_UNIX, SOCK_STREAM, 0, sigFd) != 0)
+        return false;
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+    sa.sa_handler = unixSignalHandler;
+    sigemptyset(&sa.sa_mask);
+    //One shot: a second signal gets the default action (forced kill)
+    sa.sa_flags = SA_RESTART | SA_RESETHAND;
+    return sigaction(SIGTERM, &sa, nullptr) == 0 && sigaction(SIGINT, &sa, nullptr) == 0;
+}
+
+/* setting.ini created from the template deployed next to it, on the first
+ * start (as RoomSense and AcquaThermoNet) */
+static void ensureSettings(const QString &settingsPath, const QString &defaultPath)
+{
+    if(QFile::exists(settingsPath) || !QFile::exists(defaultPath))
+        return;
+    if(!QFile::copy(defaultPath, settingsPath))
+    {
+        qWarning().noquote() << "Cannot create" << settingsPath << "from" << defaultPath;
+        return;
+    }
+    //copy keeps the read-only mode of a deployed file: it is edited by hand
+    QFile::setPermissions(settingsPath, QFile::permissions(settingsPath) | QFileDevice::WriteOwner);
+    qInfo().noquote() << "Created" << settingsPath << "from" << defaultPath;
+}
 
 int main(int argc, char *argv[])
 {
+    //Before QApplication: works without a display
+    for(int i = 1; i < argc; i++)
+    {
+        if(!strcmp(argv[i], "-V") || !strcmp(argv[i], "--version"))
+        {
+            printf("%s\n", SW_BANNER);
+            return 0;
+        }
+    }
+
     QApplication a(argc, argv);
 
     QCoreApplication::setApplicationName( SW_NAME );
     QCoreApplication::setApplicationVersion( SW_VER );
-    qInfo() << argv[0] << " Build date: "       << PC_BUILD_TIMESTAMP;
-    qInfo() << argv[0] << " SW Build name: "    << SW_NAME;
-    qInfo() << argv[0] << " Build version: "    << SW_VER << "(" PC_GIT_COMMIT ")";
+    qInfo().noquote() << SW_BANNER;
+
+    /* One instance per target, checked before the serial port and MQTT; the
+     * lock lasts as long as this object */
+    SingleInstance instance( SW_LOCK_NAME );
+    if(!instance.tryLock())
+        return EXIT_ALREADY_RUNNING;
+
+    if(setupUnixSignals())
+    {
+        QSocketNotifier *sigNotifier = new QSocketNotifier(sigFd[1], QSocketNotifier::Read, &a);
+        QObject::connect(sigNotifier, &QSocketNotifier::activated, &a, [sigNotifier] {
+            sigNotifier->setEnabled(false);
+            char c;
+            ssize_t r = ::read(sigFd[1], &c, sizeof(c));
+            (void) r;
+            qInfo() << "Termination signal received, shutting down";
+            QCoreApplication::quit();
+        });
+    }
+    else
+        qWarning() << "Unix signal handler setup failed";
+
     QString name = qgetenv("USER");
     if (name.isEmpty())
         name = qgetenv("USERNAME");
-    qInfo() << argv[0] << " Running user: "    << name;
+    qInfo() << "Running user:" << name;
 
     /*
      * WatchDog
@@ -40,6 +124,7 @@ int main(int argc, char *argv[])
 
     /* Serial port from setting.ini in the working directory, [SERIAL] port
      * (as AcquaThermoNet); read before MainWindow opens it */
+    ensureSettings(QDir::current().filePath("setting.ini"), QDir::current().filePath("setting.default.ini"));
     QSettings settings(QDir::current().filePath("setting.ini"), QSettings::IniFormat);
     SerialProto *s = SerialProto::getInstance();
     s->setSerPort(settings.value("SERIAL/port", SERIAL_PORT_DEFAULT).toString());

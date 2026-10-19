@@ -404,6 +404,7 @@ private:
     void sendData(QByteArray data);
     void sendWrite();
     bool writeConfirmed(const QByteArray &reply) const;
+    quint8 stepBase(RequestsIndex index, quint8 read) const;
 signals:
     void writeFailed(quint8 page, quint8 address, quint8 value);
     void linkStateChanged(quint8 linkState);

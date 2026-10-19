@@ -2,6 +2,7 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <QPointer>
 
 class ChronoPage;
 class HomeAssistant;
@@ -36,5 +37,6 @@ private:
     ChronoPage *m_chronoPage;
     DiagPage *m_diagPage;
     QTimer *m_idleTimer;
+    QPointer<QWidget> m_edgeTarget;         //Widget pressed through the screen edge, until the release
 };
 #endif // MAINWINDOW_H

@@ -1,0 +1,174 @@
+# Home Assistant dashboard for the Pellet Controller entities (MQTT
+# discovery, device "Pellet stove"). Standard cards only, sections view
+# (Home Assistant 2024.3 or later).
+#
+# Settings > Dashboards > Add dashboard > New dashboard from scratch, then
+# ... > Edit dashboard > ... > Raw configuration editor: paste this file.
+# The entity ids are the ones Home Assistant makes from "Pellet stove" and
+# the entity names: change them if yours differ.
+
+title: Pellet stove
+views:
+  - title: Stove
+    path: stove
+    icon: mdi:fireplace
+    type: sections
+    max_columns: 3
+    sections:
+      # Now: state, alarm, temperatures
+      - type: grid
+        cards:
+          - type: heading
+            heading: Pellet stove
+            icon: mdi:fireplace
+            badges:
+              - type: entity
+                entity: binary_sensor.pellet_stove_stove_link
+                show_state: true
+                show_icon: true
+                color: green
+          - type: markdown
+            visibility:
+              - condition: state
+                entity: binary_sensor.pellet_stove_alarm
+                state: "on"
+            content: >-
+              ## <ha-icon icon="mdi:alert"></ha-icon> {{ states('sensor.pellet_stove_state') }}
+
+              {% set s = states('sensor.pellet_stove_state') %}
+              {% if s == 'Pellet Missing' %}Refill the hopper, then press Reset on the panel.
+              {% elif s == 'Ignition Failure' %}Clean the brazier, then press Reset on the panel.
+              {% else %}Check the stove display, then press Reset on the panel.{% endif %}
+          - type: tile
+            entity: sensor.pellet_stove_state
+            name: State
+            icon: mdi:fire
+            color: deep-orange
+            grid_options:
+              columns: full
+          - type: gauge
+            entity: sensor.pellet_stove_room_temperature
+            name: Room
+            min: 5
+            max: 30
+            needle: true
+            segments:
+              - from: 5
+                color: "#7DB7FF"
+              - from: 18
+                color: "#4FB3A9"
+              - from: 23
+                color: "#F28C28"
+              - from: 26
+                color: "#F2555A"
+          - type: gauge
+            entity: sensor.pellet_stove_flame
+            name: Flame
+            min: 0
+            max: 100
+            severity:
+              green: 0
+              yellow: 40
+              red: 80
+          - type: tile
+            entity: sensor.pellet_stove_setpoint
+            name: Setpoint
+            icon: mdi:thermostat
+            color: blue
+          - type: tile
+            entity: sensor.pellet_stove_power
+            name: Power
+            icon: mdi:speedometer
+            color: orange
+
+      # Smoke and power in use
+      - type: grid
+        cards:
+          - type: heading
+            heading: Combustion
+            icon: mdi:smoke
+          - type: gauge
+            entity: sensor.pellet_stove_smoke_temperature
+            name: Smoke
+            min: 0
+            max: 250
+            needle: true
+            segments:
+              - from: 0
+                color: "#7D858D"
+              - from: 60
+                color: "#4FB3A9"
+              - from: 160
+                color: "#F28C28"
+              - from: 210
+                color: "#F2555A"
+          - type: gauge
+            entity: sensor.pellet_stove_smoke_fan
+            name: Smoke fan
+            min: 0
+            max: 3000
+            needle: true
+          - type: tile
+            entity: sensor.pellet_stove_power_in_use
+            name: Power in use
+            icon: mdi:speedometer-medium
+            color: orange
+          - type: tile
+            entity: binary_sensor.pellet_stove_alarm
+            name: Alarm
+            icon: mdi:alert-circle-outline
+            color: red
+
+      # Last 24 hours
+      - type: grid
+        column_span: 3
+        cards:
+          - type: heading
+            heading: Last 24 hours
+            icon: mdi:chart-line
+          - type: history-graph
+            title: Room and setpoint
+            hours_to_show: 24
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.pellet_stove_room_temperature
+                name: Room
+              - entity: sensor.pellet_stove_setpoint
+                name: Setpoint
+          - type: history-graph
+            title: Flame and smoke
+            hours_to_show: 24
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.pellet_stove_flame
+                name: Flame
+              - entity: sensor.pellet_stove_smoke_temperature
+                name: Smoke
+          - type: history-graph
+            title: State
+            hours_to_show: 24
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.pellet_stove_state
+                name: State
+              - entity: binary_sensor.pellet_stove_alarm
+                name: Alarm
+              - entity: binary_sensor.pellet_stove_stove_link
+                name: Link
+          - type: statistics-graph
+            title: Room temperature, last 7 days
+            days_to_show: 7
+            period: hour
+            stat_types:
+              - mean
+              - min
+              - max
+            chart_type: line
+            grid_options:
+              columns: full
+            entities:
+              - entity: sensor.pellet_stove_room_temperature
+                name: Room

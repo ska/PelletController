@@ -6,11 +6,13 @@ INCLUDEPATH += $$PWD
 HEADERS += \
     $$PWD/wClockFace.h \
     $$PWD/wDial.h \
+    $$PWD/wKeyCap.h \
     $$PWD/wPowerBars.h \
     $$PWD/wToggle.h
 
 SOURCES += \
     $$PWD/wClockFace.cpp \
     $$PWD/wDial.cpp \
+    $$PWD/wKeyCap.cpp \
     $$PWD/wPowerBars.cpp \
     $$PWD/wToggle.cpp

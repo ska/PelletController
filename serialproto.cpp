@@ -540,35 +540,53 @@ void SerialProto::writeStoveStateOffForce()
     writeStoveCmd(stoveStateIndex, StoveState::Off);
 }
 
-/* -/+ step from the value read from the stove: ignored before the first
- * read, kept inside POWER_MIN-POWER_MAX and SETPOINT_MIN_RAW-SETPOINT_MAX_RAW
- * (a value outside the range moves to the nearest limit) */
+/* Value a -/+ step starts from: the last write of that parameter still
+ * queued or not confirmed yet, otherwise the value read. Taps faster than
+ * the write and its reply (about 250 ms) all count. */
+quint8 SerialProto::stepBase(RequestsIndex index, quint8 read) const
+{
+    for(int i = m_writeQueue.size() - 1; i >= 0; i--)
+        if(m_writeQueue.at(i).index == index)
+            return m_writeQueue.at(i).value;
+    if(m_writeAttempts > 0 && m_writeCurrent.index == index)
+        return m_writeCurrent.value;
+    return read;
+}
+
+/* -/+ step from the value read from the stove (or still being written):
+ * ignored before the first read, kept inside POWER_MIN-POWER_MAX and
+ * SETPOINT_MIN_RAW-SETPOINT_MAX_RAW (a value outside the range moves to
+ * the nearest limit) */
 void SerialProto::writeStoveDecPower()
 {
-    if(!m_setPowerRead || m_setPower<=POWER_MIN)
+    const quint8 power = stepBase(powerSetIndex, m_setPower);
+    if(!m_setPowerRead || power<=POWER_MIN)
         return;
-    writeStoveCmd(powerSetIndex, qMin(m_setPower-1, POWER_MAX));
+    writeStoveCmd(powerSetIndex, qMin(power-1, POWER_MAX));
 }
 
 void SerialProto::writeStoveIncPower()
 {
-    if(!m_setPowerRead || m_setPower>=POWER_MAX)
+    const quint8 power = stepBase(powerSetIndex, m_setPower);
+    if(!m_setPowerRead || power>=POWER_MAX)
         return;
-    writeStoveCmd(powerSetIndex, qMax(m_setPower+1, POWER_MIN));
+    writeStoveCmd(powerSetIndex, qMax(power+1, POWER_MIN));
 }
 
 void SerialProto::writeStoveDecSetPoint()
 {
-    if(!m_setTempRead || m_setTempRaw<=SETPOINT_MIN_RAW)
+    const quint8 raw = stepBase(tempSetIndex, m_setTempRaw);
+    if(!m_setTempRead || raw<=SETPOINT_MIN_RAW)
         return;
-    writeStoveCmd(tempSetIndex, qMin(m_setTempRaw-1, SETPOINT_MAX_RAW));
+    writeStoveCmd(tempSetIndex, qMin(raw-1, SETPOINT_MAX_RAW));
 }
 
 void SerialProto::writeStoveIncSetPoint()
 {
-    if(!m_setTempRead || m_setTempRaw>=SETPOINT_MAX_RAW)
+    const quint8 raw = stepBase(tempSetIndex, m_setTempRaw);
+    if(!m_setTempRead || raw>=SETPOINT_MAX_RAW)
         return;
-    writeStoveCmd(tempSetIndex, qMax(m_setTempRaw+1, SETPOINT_MIN_RAW));
+    writeStoveCmd(tempSetIndex, qMax(raw+1, SETPOINT_MIN_RAW));
 }
 
 /* Stove clock: written to EEPROM F8-FD in BCD (0x13 = 13), day of week 1 =

@@ -12,12 +12,12 @@ QPushButton#clockButton             { background: transparent; padding: 0; min-h
 QPushButton#clockButton:pressed     { background: #22262B; }
 QLabel#clockLabel                   { font-size: 34px; font-weight: bold; }
 QLabel#dateLabel                    { color: #A3ABB3; font-size: 15px; padding-bottom: 5px; }
-QPushButton#chronoButton            { background: #22262B; color: #A3ABB3; border: 1px solid #2E343A; border-radius: 14px;
-                                      font-size: 15px; padding: 0 16px; min-height: 44px; }
-QPushButton#chronoButton[on="true"] { background: #1B2A3A; color: #7DB7FF; border-color: #7DB7FF; }
-QPushButton#linkButton              { background: transparent; color: #A3ABB3; font-size: 15px; font-weight: normal;
-                                      padding: 0 4px; min-height: 44px; }
-QPushButton#linkButton:pressed      { background: #22262B; }
+QPushButton#statusButton            { background: transparent; padding: 0; min-height: 44px; font-size: 15px; }
+QPushButton#statusButton:pressed    { background: #22262B; }
+QLabel#stateName                    { color: #A3ABB3; font-size: 15px; }
+QLabel#stateText                    { font-size: 15px; font-weight: bold; }
+QLabel#stateDot                     { border-radius: 6px; background: #F2555A; }
+QLabel#stateDot[on="true"]          { background: #4FB3A9; }
 
 /* main page: cards */
 QFrame#card                         { background: #22262B; border: 1px solid #2E343A; border-radius: 14px; }
@@ -25,10 +25,15 @@ QFrame#card[alarm="true"]           { border-color: #6E2A2C; }
 QLabel#caption                      { color: #A3ABB3; font-size: 14px; }
 QLabel#bigValue                     { font-size: 26px; font-weight: bold; }
 QLabel#bigValue[hot="true"]         { color: #F28C28; }
-QLabel#hint                         { color: #F6C27A; font-size: 14px; }
-QLabel#setValue                     { color: #7DB7FF; font-size: 30px; font-weight: bold; }
 QLabel#powerValue                   { font-size: 30px; font-weight: bold; }
 QLabel#dateValue                    { font-size: 26px; font-weight: bold; }
+
+QPushButton#chronoButton            { background: #343A41; color: #C9CED3; border: 1px solid #3A4047; font-size: 17px; }
+QPushButton#chronoButton[on="true"] { background: #1E2A38; color: #7DB7FF; border-color: #7DB7FF; }
+QPushButton#chronoButton:pressed    { background: #4A525B; }
+
+/* main page: key bar */
+QFrame#keyBar                       { background: #101215; border: none; border-top: 1px solid #2E343A; }
 
 QFrame#stateChip                    { background: #343A41; border: 1px solid #4A525B; border-radius: 14px; min-height: 22px; }
 QFrame#stateChip QLabel#chipText    { color: #C9CED3; font-size: 18px; font-weight: bold; }
@@ -45,12 +50,6 @@ QPushButton                         { background: #343A41; color: #F3F4F5; borde
 QPushButton:pressed                 { background: #4A525B; }
 QPushButton:disabled                { background: #262A2F; color: #555C63; }
 QPushButton#stepButton              { font-size: 34px; font-weight: normal; padding: 0; }
-QPushButton#onOffButton             { font-size: 20px; min-height: 64px; }
-QPushButton#onOffButton[look="on"]  { background: #4FB3A9; color: #0B1118; }
-QPushButton#onOffButton[look="on"]:pressed { background: #3E968D; }
-QPushButton#onOffButton[look="reset"] { background: #6E2A2C; color: #FFFFFF; }
-QPushButton#onOffButton[look="reset"]:pressed { background: #8A3538; }
-QPushButton#onOffButton:disabled    { background: #262A2F; color: #555C63; }
 
 /* confirmations and messages */
 QMessageBox                         { background: #22262B; border: 1px solid #2E343A; }

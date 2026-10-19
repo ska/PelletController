@@ -14,18 +14,22 @@ development.
 
 - Main page: room temperature on a dial with the setpoint, stove state,
   flame power, smoke temperature, set power with bars, stove date and
-  time, chrono on/off
-- On / Off with a confirmation; Reset only in the alarm states, with a
-  hint (refill the hopper, clean the brazier, check the stove display)
+  time, chrono on/off (a tap opens the chrono page), stove link and
+  network status (network only with MQTT on)
+- Key bar at the bottom of the main page, one keycap over each of the six
+  keys under the screen of panels that have them (read as F1-F6), touch
+  buttons on the others: 1 On / Off, Reset in the alarm states (both held
+  for 2 s), 2 free, 3-4 setpoint -/+, 5-6 power -/+; the other pages and
+  the dialogs are touch only
 - Setpoint -/+ in 0.5 °C steps from 5 to 30 °C, power -/+ from 1 to 5,
-  active once the value has been read from the stove
+  active once the stove answers
 - Chrono page: chrono on/off; weekend and daily programs (on/off, two
   slots); weekly program (on/off, four slots, days of each slot); every
   start and stop set on a clock face or turned off; back to the main page
   after 10 s without touches
 - Stove clock set from the panel (tap the clock): date -/+, time on a
   clock face to the minute
-- Diagnostic page (tap "Stove"): serial port and link, Tx / Rx / errors /
+- Diagnostic page (tap the status rows): serial port and link, Tx / Rx / errors /
   checksum errors / timeouts, power in use, smoke fan, stove clock,
   version, Home Assistant connection
 - Home Assistant through MQTT, read only: a "Pellet stove" device with the
@@ -41,7 +45,7 @@ development.
 | | |
 |---|---|
 | ![Stove off](docs/images/main-off.png) | ![Alarm](docs/images/main-alarm.png) |
-| Stove off: the button turns it on | Pellet missing: Reset only, with a hint |
+| Stove off: key 1 turns it on | Pellet missing: Reset only |
 | ![Chrono page, weekend](docs/images/chrono-weekend.png) | ![Chrono page, weekly](docs/images/chrono-weekly.png) |
 | Chrono page, weekend program | Weekly program, slot 2 and its days |
 | ![Time picker](docs/images/chrono-time-edit.png) | ![Stove clock](docs/images/clock-set.png) |
@@ -63,8 +67,10 @@ stove simulator (`tools/stovesim`).
 | `ThirdParty/` | External modules as git submodules: Qt Serial Port and Qt MQTT 5.13.2, built static |
 | `tools/stovesim/` | Stove board simulator on a pseudo terminal (Linux) |
 | `tools/stovedump/` | Read only dump of the stove RAM and EEPROM |
+| `tools/package/` | Deployment package for the panel launcher ([README](tools/package/README.md)) |
+| `setting.default.ini` | Settings template, copied to `setting.ini` at the first start |
 | `tests/` | Unit tests (QtTest): `SerialProto` against the simulator |
-| `docs/` | [Serial protocol](docs/PROTOCOL.md), screenshots |
+| `docs/` | [Serial protocol](docs/PROTOCOL.md), Home Assistant dashboard, screenshots |
 | `PelletController.pro` | Top level `subdirs` project: ThirdParty, CustomWidgets, app (+ tests, tools) |
 | `.qmake.conf` | `PC_SRC` and `PC_BUILD`, the source and build roots for every project |
 | `version.pri` | Version from the latest git tag |
@@ -73,9 +79,10 @@ Application sources:
 
 | File | Role |
 |---|---|
-| `main.cpp` | Startup, port from `setting.ini`, window frameless and maximized on the device, optional watchdog |
+| `main.cpp` | Startup: banner, one instance, SIGTERM/SIGINT = clean exit, `setting.ini` (created from the template), window frameless and maximized on the device |
+| `singleinstance.*` | One instance per device (abstract unix socket) |
 | `mainwindow.*` | The pages (`QStackedWidget`), back to the main page when idle, write failure message, clock setting |
-| `mainpage.*` | Main page: clock, chrono and link buttons, state card, dial with setpoint, power card |
+| `mainpage.*` | Main page: clock, stove and network status, state card with the chrono button, dial with setpoint, power card, key bar |
 | `chronopage.*` | Chrono page: chrono on/off, weekend, daily and weekly programs |
 | `diagpage.*` | Diagnostic page: serial link and counters, stove values, version |
 | `timepicker.*` | Time picker of the chrono slots (clock face, tens of minutes, slot off) |
@@ -83,10 +90,11 @@ Application sources:
 | `uiicons.*` | SVG icons tinted with one color |
 | `homeassistant.*` | Home Assistant through MQTT: settings, state, discovery |
 | `serialproto.*` | `SerialProto` singleton: serial port, polling, read and write of the stove parameters |
-| `common.h` | Name and version (`SW_NAME_VER`) |
+| `common.h` | Name, version and banner, exit codes |
 
 Custom widgets: `wDial` (temperature dial with the setpoint marker),
-`wPowerBars` (power level bars), `wToggle` (on/off switch that signals
+`wPowerBars` (power level bars), `wKeyCap` (keycap of the key bar, tap
+or hold, driven by touch or by a physical key), `wToggle` (on/off switch that signals
 only the user's taps), `wClockFace` (clock face to pick hours and
 minutes with a finger).
 
@@ -228,6 +236,10 @@ link" also while the stove does not answer. The client reconnects by
 itself (after 1, 2, 5, 10, then every 30 s); the diagnostic page shows the
 MQTT state, the broker and the messages sent.
 
+A ready dashboard (standard cards: state, alarm, gauges, last 24 hours):
+[docs/homeassistant-dashboard.yaml](docs/homeassistant-dashboard.yaml), to
+paste in the raw configuration editor of a new dashboard.
+
 ## Build
 
 Requirements: Qt 5.13.2 (desktop) or the ARM SDK of the panel, and the
@@ -263,7 +275,9 @@ The target comes from `QT_ARCH`: `x86_64` builds the desktop version
 
 The application opens the serial port at startup and keeps trying every
 3 s while it is missing: without the stove the values stay at `--`. The
-port is read from `setting.ini` in the working directory (optional):
+port is read from `setting.ini` in the working directory, created from
+`setting.default.ini` (copied next to the binary by the build) when it is
+missing:
 
 ```ini
 [SERIAL]
@@ -276,6 +290,25 @@ Optional qmake arguments:
 |---|---|
 | `CONFIG+=tests` | `tests/tests`, see [Tests](#tests) |
 | `CONFIG+=tools` | `tools/stovesim` (see [Stove simulator](#stove-simulator)) and `tools/stovedump` (see [Memory dump](#memory-dump)) |
+
+ARM builds also write the deployment package for the panel launcher
+(JMLauncher) to `<build>/dist/`: see [Install on the panel](#install-on-the-panel).
+
+## Install on the panel
+
+The package `PelletController_Package_Arm32_<version>.zip` is installed
+by the launcher of the panel, which then starts the application at boot
+and restarts it if it crashes ([tools/package/README.md](tools/package/README.md)).
+The application runs in the package folder `deploy/`: on the first start
+it creates `deploy/setting.ini` from the template (port `/dev/ttyUSB0`,
+MQTT off); edit it (broker for Home Assistant) and restart. An update
+keeps `setting.ini`.
+
+Exit status, for the restart loop: `0` stopped on purpose (SIGTERM or
+SIGINT: MQTT offline, port closed), `3` another instance is already
+running on the panel (not restarted), anything else a crash (restarted).
+`PelletController --version` prints the banner
+(`Pellet Controller vX.Y.Z (git <hash>, built <UTC time>)`).
 
 ## Version
 
